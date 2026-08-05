@@ -70,5 +70,3 @@ npm run build
 The automated tests cover DR URL and feed validation, MP3 chunking, and browser
 transcript-cache behavior. Live DR and OpenAI requests are intentionally excluded
 from the test suite.
-
-Copyright © Enhao Tan.
