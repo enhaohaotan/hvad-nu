@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { splitMp3 } from "../lib/mp3.ts";
+import { DEFAULT_CHUNK_SECONDS, splitMp3 } from "../lib/mp3.ts";
 
 const FRAME_LENGTH = 626;
+
+test("uses ten-minute chunks by default", () => {
+  assert.equal(DEFAULT_CHUNK_SECONDS, 10 * 60);
+});
 
 function makeMpeg1Layer3Frames(count: number): ArrayBuffer {
   const bytes = new Uint8Array(FRAME_LENGTH * count);

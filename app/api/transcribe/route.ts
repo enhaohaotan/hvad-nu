@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!drUrl) {
-    return errorResponse("Der skal bruges en URL til en DR-episode.", 400);
+    return errorResponse("Der skal bruges en URL til en DR LYD-episode.", 400);
   }
 
   const encoder = new TextEncoder();
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
             emit({
               type: "companion.error",
               message: safeErrorMessage(error),
+              debug: safeErrorDebug(error),
             });
           }
         })
@@ -88,10 +89,10 @@ async function runTranscription({
   signal: AbortSignal;
   emit: (event: Record<string, unknown>) => void;
 }) {
-  emitProgress(emit, "downloading", "Finder episoden i DR’s RSS-feed…", 0);
+  emitProgress(emit, "downloading", "Finder episoden i DR LYDs RSS-feed…", 0);
   const episode = await resolveDrEpisode(drUrl, signal);
   const audio = await downloadAudio(episode.audioUrl, signal, (progress) => {
-    emitProgress(emit, "downloading", "Downloader episoden fra DR…", progress * 0.35);
+    emitProgress(emit, "downloading", "Downloader episoden fra DR LYD…", progress * 0.35);
   });
 
   emitProgress(emit, "preparing", "Opdeler den oprindelige MP3-fil i dele på cirka ti minutter…", 36);
@@ -140,7 +141,7 @@ async function downloadAudio(
 ): Promise<ArrayBuffer> {
   const response = await fetch(url, { signal, cache: "no-store" });
   if (!response.ok || !response.body) {
-    throw new Error("Lyden til episoden kunne ikke downloades fra DR.");
+    throw new Error("Lyden til episoden kunne ikke downloades fra DR LYD.");
   }
 
   const total = Number(response.headers.get("content-length")) || 0;
@@ -217,7 +218,7 @@ async function transcribeChunk({
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(openAiErrorMessage(response.status));
+    throw await openAiError(response, index);
   }
 
   const reader = response.body.getReader();
@@ -286,21 +287,55 @@ function errorResponse(message: string, status: number) {
   );
 }
 
-function openAiErrorMessage(status: number): string {
+class OpenAiTranscriptionError extends Error {
+  constructor(message: string, readonly debug: string) {
+    super(message);
+    this.name = "OpenAiTranscriptionError";
+  }
+}
+
+async function openAiError(
+  response: Response,
+  chunkIndex: number,
+): Promise<OpenAiTranscriptionError> {
+  const status = response.status;
+  let message = "OpenAI kunne ikke transskribere denne lyddel. Prøv igen.";
   if (status === 401 || status === 403) {
-    return "OpenAI afviste API-nøglen. Kontrollér den, og prøv igen.";
+    message = "OpenAI afviste API-nøglen. Kontrollér den, og prøv igen.";
+  } else if (status === 429) {
+    message = "OpenAI’s hastighedsgrænse blev nået. Vent et øjeblik, og prøv igen.";
+  } else if (status === 413) {
+    message = "OpenAI afviste lydfilens størrelse.";
   }
-  if (status === 429) {
-    return "OpenAI’s hastighedsgrænse blev nået. Vent et øjeblik, og prøv igen.";
+
+  let rawError = "";
+  try {
+    rawError = (await response.text()).trim();
+  } catch {
+    // The HTTP status remains available if the response body cannot be read.
   }
-  if (status === 413) {
-    return "OpenAI afviste lydfilens størrelse.";
-  }
-  return "OpenAI kunne ikke transskribere denne lyddel.";
+  const rawDetail = rawError || response.statusText || "Intet fejlsvar";
+  return new OpenAiTranscriptionError(
+    message,
+    [
+      `Tidspunkt: ${new Date().toISOString()}`,
+      `Model: gpt-transcribe`,
+      `Lyddel: ${chunkIndex + 1}`,
+      `HTTP-status: ${status} ${response.statusText}`.trim(),
+      "OpenAI-svar:",
+      rawDetail,
+    ].join("\n"),
+  );
 }
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
     : "Episoden kunne ikke transskriberes.";
+}
+
+function safeErrorDebug(error: unknown): string | undefined {
+  return error instanceof OpenAiTranscriptionError
+    ? error.debug
+    : undefined;
 }
