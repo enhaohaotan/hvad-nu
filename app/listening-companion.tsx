@@ -485,7 +485,7 @@ export function ListeningCompanion() {
                   </button>
                 </div>
               </div>
-              <article aria-live="polite" className="editorial-copy mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[18px] leading-[1.85] text-[#332e27] sm:py-12 sm:text-[20px]">
+              <article aria-live="polite" className="editorial-copy mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] leading-[1.8] text-[#332e27] sm:py-12 sm:text-[16px]">
                 {transcript}
                 {phase === "transcribing" && <span className="ml-1 inline-block h-5 w-0.5 animate-pulse bg-[#9f211e] align-middle" aria-hidden="true" />}
               </article>
