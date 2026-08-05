@@ -1,0 +1,306 @@
+import { NextRequest, NextResponse } from "next/server";
+import { resolveDrEpisode } from "@/lib/dr";
+import { MAX_CHUNK_BYTES, splitMp3 } from "@/lib/mp3";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 900;
+
+const MAX_AUDIO_BYTES = 400_000_000;
+
+type ProgressPhase = "downloading" | "preparing" | "transcribing";
+
+export async function POST(request: NextRequest) {
+  const authorization = request.headers.get("authorization");
+  const apiKey = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+
+  if (!apiKey) {
+    return errorResponse("Indtast din OpenAI API-nøgle.", 401);
+  }
+
+  let drUrl = "";
+  try {
+    const body = (await request.json()) as { url?: unknown };
+    drUrl = typeof body.url === "string" ? body.url : "";
+  } catch {
+    return errorResponse("Anmodningen om transskription kunne ikke læses.", 400);
+  }
+
+  if (!drUrl) {
+    return errorResponse("Der skal bruges en URL til en DR-episode.", 400);
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      let closed = false;
+      const emit = (event: Record<string, unknown>) => {
+        if (closed) return;
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+        );
+      };
+      const heartbeat = setInterval(() => {
+        if (!closed) controller.enqueue(encoder.encode(": keep-alive\n\n"));
+      }, 15_000);
+
+      void runTranscription({ drUrl, apiKey, signal: request.signal, emit })
+        .catch((error) => {
+          if (!request.signal.aborted) {
+            emit({
+              type: "companion.error",
+              message: safeErrorMessage(error),
+            });
+          }
+        })
+        .finally(() => {
+          clearInterval(heartbeat);
+          closed = true;
+          try {
+            controller.close();
+          } catch {
+            // The browser may have already closed the stream.
+          }
+        });
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-store, no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+async function runTranscription({
+  drUrl,
+  apiKey,
+  signal,
+  emit,
+}: {
+  drUrl: string;
+  apiKey: string;
+  signal: AbortSignal;
+  emit: (event: Record<string, unknown>) => void;
+}) {
+  emitProgress(emit, "downloading", "Finder episoden i DR’s RSS-feed…", 0);
+  const episode = await resolveDrEpisode(drUrl, signal);
+  const audio = await downloadAudio(episode.audioUrl, signal, (progress) => {
+    emitProgress(emit, "downloading", "Downloader episoden fra DR…", progress * 0.35);
+  });
+
+  emitProgress(emit, "preparing", "Opdeler den oprindelige MP3-fil i dele på cirka ti minutter…", 36);
+  const chunks = splitMp3(audio);
+
+  let completed = "";
+  let context = "";
+  for (let index = 0; index < chunks.length; index++) {
+    const chunk = chunks[index];
+    const baseProgress = 40 + (index / chunks.length) * 58;
+    emitProgress(
+      emit,
+      "transcribing",
+      `Transskriberer del ${index + 1} af ${chunks.length}…`,
+      baseProgress,
+    );
+
+    const result = await transcribeChunk({
+      chunk: chunk.blob,
+      index,
+      apiKey,
+      prompt: context,
+      signal,
+      onDelta(delta) {
+        emit({ type: "transcript.text.delta", delta });
+      },
+    });
+
+    completed = joinTranscript(completed, result);
+    context = completed.slice(-500);
+    emitProgress(
+      emit,
+      "transcribing",
+      `Del ${index + 1} af ${chunks.length} er transskriberet`,
+      40 + ((index + 1) / chunks.length) * 58,
+    );
+  }
+
+  emit({ type: "companion.done", text: completed, progress: 100 });
+}
+
+async function downloadAudio(
+  url: string,
+  signal: AbortSignal,
+  onProgress: (progress: number) => void,
+): Promise<ArrayBuffer> {
+  const response = await fetch(url, { signal, cache: "no-store" });
+  if (!response.ok || !response.body) {
+    throw new Error("Lyden til episoden kunne ikke downloades fra DR.");
+  }
+
+  const total = Number(response.headers.get("content-length")) || 0;
+  if (total > MAX_AUDIO_BYTES) {
+    throw new Error("Episoden er for stor til denne første version.");
+  }
+
+  const reader = response.body.getReader();
+  const parts: Uint8Array[] = [];
+  let received = 0;
+  let lastReported = -1;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value);
+    received += value.byteLength;
+
+    if (received > MAX_AUDIO_BYTES) {
+      await reader.cancel();
+      throw new Error("Episoden er for stor til denne første version.");
+    }
+
+    if (total) {
+      const progress = Math.floor((received / total) * 100);
+      if (progress !== lastReported) {
+        lastReported = progress;
+        onProgress(Math.min(100, progress));
+      }
+    }
+  }
+
+  return new Blob(parts as BlobPart[], { type: "audio/mpeg" }).arrayBuffer();
+}
+
+async function transcribeChunk({
+  chunk,
+  index,
+  apiKey,
+  prompt,
+  signal,
+  onDelta,
+}: {
+  chunk: Blob;
+  index: number;
+  apiKey: string;
+  prompt: string;
+  signal: AbortSignal;
+  onDelta: (delta: string) => void;
+}): Promise<string> {
+  if (chunk.size > MAX_CHUNK_BYTES) {
+    throw new Error("En lyddel overskred sikkerhedsgrænsen på 24 MB.");
+  }
+
+  const form = new FormData();
+  form.set(
+    "file",
+    chunk,
+    `dr-episode-${String(index + 1).padStart(2, "0")}.mp3`,
+  );
+  form.set("model", "gpt-transcribe");
+  form.set("stream", "true");
+  form.append("languages[]", "da");
+  if (prompt) form.set("prompt", prompt);
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "text/event-stream",
+    },
+    body: form,
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(openAiErrorMessage(response.status));
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let accumulated = "";
+  let finalText = "";
+
+  const consume = (block: string) => {
+    const data = block
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+    if (!data || data === "[DONE]") return;
+
+    try {
+      const event = JSON.parse(data) as {
+        type?: string;
+        delta?: string;
+        text?: string;
+      };
+      if (event.type === "transcript.text.delta" && event.delta) {
+        accumulated += event.delta;
+        onDelta(event.delta);
+      } else if (event.type === "transcript.text.done" && event.text) {
+        finalText = event.text;
+      }
+    } catch {
+      // Ignore provider metadata and heartbeat events.
+    }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() ?? "";
+    blocks.forEach(consume);
+    if (done) break;
+  }
+  if (buffer.trim()) consume(buffer);
+
+  return (finalText || accumulated).trim();
+}
+
+function emitProgress(
+  emit: (event: Record<string, unknown>) => void,
+  phase: ProgressPhase,
+  message: string,
+  progress: number,
+) {
+  emit({ type: "companion.progress", phase, message, progress });
+}
+
+function joinTranscript(left: string, right: string): string {
+  if (!left) return right.trimStart();
+  if (!right) return left;
+  return `${left.trimEnd()}\n\n${right.trimStart()}`;
+}
+
+function errorResponse(message: string, status: number) {
+  return NextResponse.json(
+    { error: message },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+function openAiErrorMessage(status: number): string {
+  if (status === 401 || status === 403) {
+    return "OpenAI afviste API-nøglen. Kontrollér den, og prøv igen.";
+  }
+  if (status === 429) {
+    return "OpenAI’s hastighedsgrænse blev nået. Vent et øjeblik, og prøv igen.";
+  }
+  if (status === 413) {
+    return "OpenAI afviste lydfilens størrelse.";
+  }
+  return "OpenAI kunne ikke transskribere denne lyddel.";
+}
+
+function safeErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Episoden kunne ikke transskriberes.";
+}
