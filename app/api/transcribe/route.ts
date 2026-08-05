@@ -140,38 +140,9 @@ async function downloadAudio(
   signal: AbortSignal,
   onProgress: (progress: number) => void,
 ): Promise<ArrayBuffer> {
-    let response: Response;
-
-    try {
-    response = await fetch(url, {
-      signal,
-      cache: "no-store",
-    });
-  } catch (error) {
-    console.error("Audio fetch failed:", error);
-    throw new Error(
-      error instanceof Error
-        ? `Netværksfejl under download: ${error.message}`
-        : "Ukendt netværksfejl under download.",
-    );
-  }
-
-  if (!response.ok) {
-    console.error("Audio response:", {
-      status: response.status,
-      statusText: response.statusText,
-      url: response.url,
-      redirected: response.redirected,
-      type: response.type,
-    });
-
-    throw new Error(
-      `Lyden kunne ikke downloades: HTTP ${response.status} ${response.statusText}`,
-    );
-  }
-
-  if (!response.body) {
-    throw new Error("Serveren returnerede ingen læsbar datastrøm.");
+  const response = await fetch(url, { signal, cache: "no-store" });
+  if (!response.ok || !response.body) {
+    throw new Error("Lyden til episoden kunne ikke downloades fra DR LYD.");
   }
 
   const total = Number(response.headers.get("content-length")) || 0;
