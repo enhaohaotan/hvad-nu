@@ -10,6 +10,8 @@ export type TranscriptCacheEntry = {
   sourceUrl?: string;
   episodeTitle?: string;
   showTitle?: string;
+  publishedAt?: string;
+  duration?: string;
 };
 
 export function parseTranscriptCache(value: string | null): TranscriptCacheEntry[] {
@@ -30,7 +32,9 @@ export function parseTranscriptCache(value: string | null): TranscriptCacheEntry
       (entry.isRegenerated === undefined || typeof entry.isRegenerated === "boolean") &&
       (entry.sourceUrl === undefined || typeof entry.sourceUrl === "string") &&
       (entry.episodeTitle === undefined || typeof entry.episodeTitle === "string") &&
-      (entry.showTitle === undefined || typeof entry.showTitle === "string")
+      (entry.showTitle === undefined || typeof entry.showTitle === "string") &&
+      (entry.publishedAt === undefined || typeof entry.publishedAt === "string") &&
+      (entry.duration === undefined || typeof entry.duration === "string")
     );
   } catch {
     return [];
