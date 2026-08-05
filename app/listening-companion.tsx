@@ -59,6 +59,9 @@ export function ListeningCompanion() {
   } | null>(null);
   const [latestGenstartEpisode, setLatestGenstartEpisode] =
     useState<DrEpisode | null>(null);
+  const [areEpisodeSuggestionsReady, setAreEpisodeSuggestionsReady] =
+    useState(false);
+  const [hasLoadedBrowserStorage, setHasLoadedBrowserStorage] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isContactCopied, setIsContactCopied] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
@@ -86,6 +89,7 @@ export function ListeningCompanion() {
       setApiKey(storedKey);
       setIsApiKeyInputVisible(!storedKey);
       setCachedEpisodes(storedTranscripts);
+      setHasLoadedBrowserStorage(true);
     });
     return () => {
       cancelAnimationFrame(frame);
@@ -97,53 +101,40 @@ export function ListeningCompanion() {
     cachedEpisodes.find((entry) => entry.sourceUrl)?.sourceUrl ?? "";
 
   useEffect(() => {
+    if (!hasLoadedBrowserStorage) return;
+
     const controller = new AbortController();
-    async function loadLatestGenstartEpisode() {
+    const referenceUrl = lastGeneratedSourceUrl || GENSTART_REFERENCE_URL;
+
+    async function loadLatestEpisode() {
       try {
         const response = await fetch(
-          `/api/latest?url=${encodeURIComponent(GENSTART_REFERENCE_URL)}`,
+          `/api/latest?url=${encodeURIComponent(referenceUrl)}`,
           { signal: controller.signal, cache: "no-store" },
         );
         const body = (await response.json()) as { episode?: DrEpisode };
         if (response.ok && body.episode) {
-          setLatestGenstartEpisode(body.episode);
+          if (lastGeneratedSourceUrl) {
+            setLatestSuggestion({
+              referenceUrl: lastGeneratedSourceUrl,
+              episode: body.episode,
+            });
+          } else {
+            setLatestGenstartEpisode(body.episode);
+          }
         }
       } catch {
         // The input remains usable if DR's feed is temporarily unavailable.
-      }
-    }
-
-    void loadLatestGenstartEpisode();
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    if (!lastGeneratedSourceUrl) return;
-
-    const controller = new AbortController();
-    async function loadLatestEpisode() {
-      try {
-        const response = await fetch(
-          `/api/latest?url=${encodeURIComponent(lastGeneratedSourceUrl)}`,
-          { signal: controller.signal, cache: "no-store" },
-        );
-        const body = (await response.json()) as {
-          episode?: DrEpisode;
-        };
-        if (response.ok && body.episode) {
-          setLatestSuggestion({
-            referenceUrl: lastGeneratedSourceUrl,
-            episode: body.episode,
-          });
+      } finally {
+        if (!controller.signal.aborted) {
+          setAreEpisodeSuggestionsReady(true);
         }
-      } catch {
-        // The saved transcript list still works if DR's feed is unavailable.
       }
     }
 
     void loadLatestEpisode();
     return () => controller.abort();
-  }, [lastGeneratedSourceUrl]);
+  }, [hasLoadedBrowserStorage, lastGeneratedSourceUrl]);
 
   useEffect(() => {
     const sourceUrls = [...new Set(
@@ -358,7 +349,14 @@ export function ListeningCompanion() {
       });
       setTranscript(finalText);
       const updatedCache = cacheTranscript(episode, finalText, true);
-      if (updatedCache) setCachedEpisodes(updatedCache);
+      if (updatedCache) {
+        const nextSourceUrl =
+          updatedCache.find((entry) => entry.sourceUrl)?.sourceUrl ?? "";
+        if (nextSourceUrl !== lastGeneratedSourceUrl) {
+          setAreEpisodeSuggestionsReady(false);
+        }
+        setCachedEpisodes(updatedCache);
+      }
 
       setPhase("done");
       setMessage("Transskriptionen er klar");
@@ -396,6 +394,18 @@ export function ListeningCompanion() {
   }
 
   function removeHistoryEntry(target: TranscriptCacheEntry) {
+    const remainingEntries = cachedEpisodes.filter(
+      (entry) =>
+        entry.audioUrl !== target.audioUrl ||
+        entry.model !== target.model ||
+        entry.cachedAt !== target.cachedAt,
+    );
+    const nextSourceUrl =
+      remainingEntries.find((entry) => entry.sourceUrl)?.sourceUrl ?? "";
+    if (nextSourceUrl !== lastGeneratedSourceUrl) {
+      setAreEpisodeSuggestionsReady(false);
+    }
+
     setCachedEpisodes((current) => {
       const updated = current.filter(
         (entry) =>
@@ -557,9 +567,14 @@ export function ListeningCompanion() {
                       value={url}
                       onChange={(event) => {
                         setUrl(event.target.value);
-                        setShowCachedEpisodes(true);
+                        setShowCachedEpisodes(areEpisodeSuggestionsReady);
                       }}
-                      onFocus={() => setShowCachedEpisodes(true)}
+                      onFocus={() =>
+                        setShowCachedEpisodes(areEpisodeSuggestionsReady)
+                      }
+                      onClick={() =>
+                        setShowCachedEpisodes(areEpisodeSuggestionsReady)
+                      }
                       onBlur={() => setShowCachedEpisodes(false)}
                       role="combobox"
                       aria-autocomplete="list"
