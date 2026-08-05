@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseDrEpisodeUrl, parseDrFeed } from "../lib/dr.ts";
+import {
+  parseDrEpisodeUrl,
+  parseDrFeed,
+  parseLatestDrFeed,
+} from "../lib/dr.ts";
 
 const episodeUrl =
   "https://www.dr.dk/lyd/p1/akkurat-med-clement/akkurat-med-clement-2026/clement-moeder-lone-frank-11162651307";
@@ -80,4 +84,45 @@ test("rejects an enclosure outside DR's fixed podcast host", () => {
       ),
     /ikke understøttes/i,
   );
+});
+
+test("reads the latest public episode and uses DR Lyd's URL and date", () => {
+  const reference = parseDrEpisodeUrl(
+    "https://www.dr.dk/lyd/special-radio/genstart/genstart-2025/en-gammel-episode-11802650000",
+  );
+  const episode = parseLatestDrFeed(
+    `<rss><channel><title>Genstart</title>
+      <itunes:image href="https://api.dr.dk/podcasts/v1/images/cover.jpg" />
+      <item>
+        <guid>11802660179</guid>
+        <title>Madonna er tilbage</title>
+        <pubDate>Wed, 05 Aug 2026 03:00:00 +0200</pubDate>
+        <itunes:duration>00:24:37</itunes:duration>
+        <enclosure url="https://api.dr.dk/podcasts/v1/assets/urn:dr:podcast:item:11802660179/audio.mp3" />
+      </item>
+    </channel></rss>`,
+    reference,
+    `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+      props: {
+        pageProps: {
+          episodesGroups: [{
+            items: [{
+              title: "Madonna er tilbage",
+              presentationUrl: "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/madonna-er-tilbage-11802650179",
+              startTime: "2026-07-31T03:00:00+02:00",
+              durationMilliseconds: 1_477_044,
+            }],
+          }],
+        },
+      },
+    })}</script>`,
+  );
+
+  assert.equal(episode.episodeTitle, "Madonna er tilbage");
+  assert.equal(episode.duration, "00:24:37");
+  assert.equal(
+    episode.sourceUrl,
+    "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/madonna-er-tilbage-11802650179",
+  );
+  assert.equal(episode.publishedAt, "2026-07-31T03:00:00+02:00");
 });
