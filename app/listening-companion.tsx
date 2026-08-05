@@ -4,6 +4,21 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import type { DrEpisode } from "@/lib/dr";
 
 const API_KEY_STORAGE = "danish-listening-companion.openai-api-key";
+const DR_DISCOVERY_LINKS = [
+  { label: "DR Lyd", href: "https://www.dr.dk/lyd" },
+  {
+    label: "Genstart",
+    href: "https://www.dr.dk/lyd/special-radio/genstart-2642056922000",
+  },
+  {
+    label: "Brinkmanns briks",
+    href: "https://www.dr.dk/lyd/p1/brinkmanns-briks-2144855835000",
+  },
+  {
+    label: "Klog på Sprog",
+    href: "https://www.dr.dk/lyd/p1/klog-paa-sprog-1624041693000",
+  },
+] as const;
 
 type Phase =
   | "idle"
@@ -211,6 +226,23 @@ export function ListeningCompanion() {
                     {phase === "resolving" ? "Finder…" : "Find episode"}
                   </button>
                 </div>
+                <nav
+                  aria-label="Find en episode i DR Lyd"
+                  className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-5 text-[#70695f]"
+                >
+                  <span>Find en episode:</span>
+                  {DR_DISCOVERY_LINKS.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-[#4f5f49] underline decoration-[#4f5f49]/40 underline-offset-4 transition hover:text-[#9f211e]"
+                    >
+                      {link.label} <span aria-hidden="true">↗</span>
+                    </a>
+                  ))}
+                </nav>
               </div>
             </form>
 
