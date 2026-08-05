@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://havdsagdede.tanenhao.com"),
   title: "Hva’ sagde de?",
   description: "Gør enhver DR LYD-podcastepisode til en tydelig dansk transskription — klar til at læse med, mens du lytter.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Hva’ sagde de?",
     description: "Fra dansk lyd til læsevenlige ord.",
+    url: "/",
     type: "website",
   },
   twitter: {

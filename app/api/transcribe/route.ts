@@ -3,7 +3,8 @@ import { resolveDrEpisode } from "@/lib/dr";
 import { MAX_CHUNK_BYTES, splitMp3 } from "@/lib/mp3";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 900;
+// Vercel Hobby with Fluid Compute supports up to five minutes per invocation.
+export const maxDuration = 300;
 
 const MAX_AUDIO_BYTES = 400_000_000;
 
