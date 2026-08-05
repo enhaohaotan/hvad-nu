@@ -62,6 +62,17 @@ export function ListeningCompanion() {
     event.preventDefault();
     if (!url.trim()) return;
 
+    try {
+      new URL(url.trim());
+    } catch {
+      setEpisode(null);
+      setTranscript("");
+      setPhase("error");
+      setMessage("Indsæt en gyldig URL til en DR-episode.");
+      setProgress(0);
+      return;
+    }
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -189,7 +200,7 @@ export function ListeningCompanion() {
           </div>
 
           <section className="mt-6 border-y-2 border-[#9f211e] sm:mt-10" aria-label="Lav en transskription">
-            <form onSubmit={handleResolve} className="grid lg:grid-cols-[190px_1fr]">
+            <form noValidate onSubmit={handleResolve} className="grid lg:grid-cols-[190px_1fr]">
               <div className="border-b border-[#9f211e]/35 py-3 lg:border-b-0 lg:border-r lg:py-5 lg:pr-8">
                 <StepLabel number="01" label="Vælg en udsendelse" />
               </div>
@@ -357,7 +368,7 @@ function EpisodePreview({ episode }: { episode: DrEpisode }) {
 function StatusPanel({ phase, message, progress, isWorking, onCancel }: { phase: Phase; message: string; progress: number; isWorking: boolean; onCancel: () => void }) {
   const isError = phase === "error";
   return (
-    <div className={`border-t border-[#9f211e]/45 px-0 py-5 sm:px-6 ${isError ? "bg-[#9f211e]/5" : ""}`} role={isError ? "alert" : "status"}>
+    <div className={`border-t border-[#9f211e]/45 px-4 py-5 sm:px-6 ${isError ? "bg-[#9f211e]/5" : ""}`} role={isError ? "alert" : "status"}>
       <div className="flex items-center justify-between gap-4">
         <p className={`text-xs font-semibold uppercase tracking-[0.12em] ${isError ? "text-[#9f211e]" : "text-[#575147]"}`}>{message}</p>
         {isWorking && <button type="button" onClick={onCancel} className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e]">Annuller</button>}
