@@ -51,7 +51,14 @@ export function ListeningCompanion() {
   const [cachedEpisodes, setCachedEpisodes] = useState<TranscriptCacheEntry[]>([]);
   const [showCachedEpisodes, setShowCachedEpisodes] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [playerError, setPlayerError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const copyFeedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -101,6 +108,7 @@ export function ListeningCompanion() {
     if (!value.trim()) return;
     setShowCachedEpisodes(false);
     setIsCopied(false);
+    resetPlayer();
 
     try {
       new URL(value.trim());
@@ -218,6 +226,7 @@ export function ListeningCompanion() {
   }
 
   function clearEpisode() {
+    resetPlayer();
     abortRef.current?.abort();
     abortRef.current = null;
     setUrl("");
@@ -228,6 +237,72 @@ export function ListeningCompanion() {
     setProgress(0);
     setShowCachedEpisodes(false);
     setIsCopied(false);
+  }
+
+  async function openPlayer() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    setIsPlayerOpen(true);
+    setPlayerError("");
+    try {
+      await audio.play();
+    } catch {
+      setPlayerError("Lyden kunne ikke afspilles.");
+    }
+  }
+
+  async function togglePlayback() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    setPlayerError("");
+    if (audio.paused) {
+      try {
+        await audio.play();
+      } catch {
+        setPlayerError("Lyden kunne ikke afspilles.");
+      }
+    } else {
+      audio.pause();
+    }
+  }
+
+  async function toggleEpisodePlayback() {
+    if (isPlayerOpen) {
+      await togglePlayback();
+    } else {
+      await openPlayer();
+    }
+  }
+
+  function seekBy(seconds: number) {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const limit = Number.isFinite(audio.duration) ? audio.duration : 0;
+    audio.currentTime = Math.min(Math.max(audio.currentTime + seconds, 0), limit);
+  }
+
+  function closePlayer() {
+    audioRef.current?.pause();
+    setIsPlayerOpen(false);
+    setIsPlaying(false);
+    setPlayerError("");
+  }
+
+  function resetPlayer() {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.playbackRate = 1;
+    }
+    setIsPlayerOpen(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setAudioDuration(0);
+    setPlaybackRate(1);
+    setPlayerError("");
   }
 
   async function copyTranscript() {
@@ -312,7 +387,7 @@ export function ListeningCompanion() {
                       <button
                         type="button"
                         onClick={clearEpisode}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6b655b] underline decoration-[#6b655b]/45 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus:ring-2 focus:ring-[#9f211e]/25"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6b655b] underline decoration-[#6b655b]/45 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25"
                         aria-label="Ryd episodefeltet"
                       >
                         Ryd
@@ -335,7 +410,7 @@ export function ListeningCompanion() {
                                 setUrl(entry.sourceUrl);
                                 void resolveEpisode(entry.sourceUrl, entry);
                               }}
-                              className="w-full cursor-default px-4 py-3 text-left transition hover:bg-[#76866f]/10 focus:bg-[#76866f]/10 focus:outline-none"
+                              className="w-full cursor-default px-4 py-3 text-left transition hover:bg-[#76866f]/10 focus:outline-none focus-visible:bg-[#76866f]/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#9f211e]/25"
                             >
                               <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                                 {entry.showTitle && (
@@ -365,7 +440,7 @@ export function ListeningCompanion() {
                   <button
                     type="submit"
                     disabled={!url.trim() || isWorking}
-                    className="min-h-13 border border-[#1d1915] bg-[#1d1915] px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#f8f2e6] transition hover:bg-[#9f211e] focus:outline-none focus:ring-2 focus:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="min-h-13 border border-[#1d1915] bg-[#1d1915] px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#f8f2e6] transition hover:bg-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {phase === "resolving" ? "Finder…" : "Find episode"}
                   </button>
@@ -397,13 +472,17 @@ export function ListeningCompanion() {
                     <StepLabel number="02" label="Gennemse og transskriber" />
                   </div>
                   <div className="py-6 lg:pl-8">
-                    <EpisodePreview episode={episode} />
+                    <EpisodePreview
+                      episode={episode}
+                      isPlaying={isPlaying}
+                      onPlay={() => void toggleEpisodePlayback()}
+                    />
 
                     <div className="mt-7 border-t border-[#29231b]/20 pt-6">
                       <div className="flex items-end justify-between gap-4">
                         <p className="editorial-serif text-xl">OpenAI API-nøgle</p>
                         {apiKey && (
-                          <button type="button" onClick={forgetApiKey} disabled={isWorking} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e] disabled:opacity-40">
+                          <button type="button" onClick={forgetApiKey} disabled={isWorking} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25 disabled:opacity-40">
                             Fjern nøgle
                           </button>
                         )}
@@ -464,7 +543,7 @@ export function ListeningCompanion() {
                       type="button"
                       onClick={handleTranscribe}
                       disabled={!apiKey.trim() || isWorking}
-                      className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition hover:bg-[#851b18] focus:outline-none focus:ring-2 focus:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition hover:bg-[#851b18] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <span>{phase === "done" ? "Lav ny transskription" : "Lav transskription"}</span>
                       <span className="text-lg" aria-hidden="true">→</span>
@@ -487,10 +566,10 @@ export function ListeningCompanion() {
                   <h2 id="transcript-title" className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl">{episode?.episodeTitle}</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={copyTranscript} aria-live="polite" className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
+                  <button type="button" onClick={copyTranscript} aria-live="polite" className="w-fit border border-[#29231b] bg-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f8f2e6] transition hover:border-[#9f211e] hover:bg-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
                     {isCopied ? "Kopieret" : "Kopiér tekst"}
                   </button>
-                  <button type="button" onClick={downloadTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
+                  <button type="button" onClick={downloadTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20">
                     Hent tekst
                   </button>
                 </div>
@@ -516,7 +595,112 @@ export function ListeningCompanion() {
           </address>
           <span>© 2026 Enhao Tan</span>
         </footer>
+        {isPlayerOpen && <div className="h-36 sm:h-28" aria-hidden="true" />}
       </div>
+
+      {episode && (
+        <audio
+          key={episode.audioUrl}
+          ref={audioRef}
+          preload="metadata"
+          src={episode.audioUrl}
+          onLoadedMetadata={(event) => setAudioDuration(event.currentTarget.duration)}
+          onDurationChange={(event) => setAudioDuration(event.currentTarget.duration)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => setIsPlaying(false)}
+          onRateChange={(event) => setPlaybackRate(event.currentTarget.playbackRate)}
+          onCanPlay={() => setPlayerError("")}
+          onError={() => setPlayerError("Lyden kunne ikke afspilles.")}
+        />
+      )}
+
+      {episode && isPlayerOpen && (
+        <aside
+          aria-label="Lydafspiller"
+          className="fixed inset-x-0 bottom-0 z-50 border-t-4 border-[#9f211e] bg-[#1d1915] text-[#f3eddf] shadow-[0_-16px_45px_rgba(29,25,21,0.28)]"
+        >
+          <div className="mx-auto max-w-[1600px] px-4 py-3 sm:px-7">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#d7a6a2]">{episode.showTitle}</p>
+                <p className="truncate text-sm font-semibold">{episode.episodeTitle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closePlayer}
+                className="shrink-0 cursor-default text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d8d0c4] underline decoration-current/40 underline-offset-4 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                Luk
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={togglePlayback}
+                aria-label={isPlaying ? "Pause" : "Afspil"}
+                className="flex h-10 w-10 shrink-0 cursor-default items-center justify-center bg-[#9f211e] text-sm transition hover:bg-[#bd2925] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => seekBy(-5)}
+                aria-label="Fem sekunder tilbage"
+                className="h-10 shrink-0 cursor-default border border-[#f3eddf]/35 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition hover:border-[#f3eddf] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                −5 s
+              </button>
+              <button
+                type="button"
+                onClick={() => seekBy(5)}
+                aria-label="Fem sekunder frem"
+                className="h-10 shrink-0 cursor-default border border-[#f3eddf]/35 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition hover:border-[#f3eddf] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                +5 s
+              </button>
+              <span className="min-w-[88px] font-mono text-[10px] text-[#d8d0c4]">
+                {formatPlaybackTime(currentTime)} / {formatPlaybackTime(audioDuration)}
+              </span>
+              <input
+                type="range"
+                min="0"
+                max={audioDuration || 0}
+                step="0.1"
+                value={Math.min(currentTime, audioDuration || 0)}
+                onChange={(event) => {
+                  const nextTime = Number(event.target.value);
+                  if (audioRef.current) audioRef.current.currentTime = nextTime;
+                  setCurrentTime(nextTime);
+                }}
+                disabled={!audioDuration}
+                aria-label="Spol i episoden"
+                className="h-1 min-w-[140px] flex-1 accent-[#9f211e] disabled:opacity-40"
+              />
+              <label htmlFor="playback-rate" className="sr-only">Afspilningshastighed</label>
+              <select
+                id="playback-rate"
+                value={playbackRate}
+                onChange={(event) => {
+                  const nextRate = Number(event.target.value);
+                  if (audioRef.current) audioRef.current.playbackRate = nextRate;
+                  setPlaybackRate(nextRate);
+                }}
+                className="h-10 cursor-default border border-[#f3eddf]/35 bg-[#1d1915] px-2 text-[10px] font-semibold text-[#f3eddf] outline-none"
+              >
+                {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                  <option key={rate} value={rate}>{rate.toLocaleString("da-DK")}×</option>
+                ))}
+              </select>
+            </div>
+            {playerError && (
+              <p className="mt-2 text-[10px] text-[#f0aaa5]" role="alert">{playerError}</p>
+            )}
+          </div>
+        </aside>
+      )}
     </main>
   );
 }
@@ -546,6 +730,19 @@ function formatCachedTime(value: number): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatPlaybackTime(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return "0:00";
+
+  const totalSeconds = Math.floor(value);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function cacheTranscript(
@@ -585,7 +782,15 @@ function cacheTranscript(
   }
 }
 
-function EpisodePreview({ episode }: { episode: DrEpisode }) {
+function EpisodePreview({
+  episode,
+  isPlaying,
+  onPlay,
+}: {
+  episode: DrEpisode;
+  isPlaying: boolean;
+  onPlay: () => void;
+}) {
   return (
     <div className="grid gap-5 sm:grid-cols-[112px_1fr] sm:items-center">
       {episode.imageUrl ? (
@@ -597,7 +802,17 @@ function EpisodePreview({ episode }: { episode: DrEpisode }) {
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9f211e]">{episode.showTitle}</p>
         <h2 className="editorial-serif mt-2 line-clamp-3 text-2xl leading-[1.05] tracking-[-0.03em] sm:text-3xl">{episode.episodeTitle}</h2>
-        <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6b655b]">{formatEpisodeMeta(episode)}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6b655b]">{formatEpisodeMeta(episode)}</p>
+          <button
+            type="button"
+            onClick={onPlay}
+            className="cursor-default border border-[#29231b]/45 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#403a32] transition hover:border-[#9f211e] hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/20"
+          >
+            <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>{" "}
+            {isPlaying ? "Pause" : "Afspil"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -622,7 +837,7 @@ function StatusPanel({ phase, message, progress, isWorking, onCancel }: { phase:
                 type="button"
                 onClick={() => setShowErrorDetail((visible) => !visible)}
                 aria-expanded={showErrorDetail}
-                className="cursor-default text-[10px] font-semibold uppercase tracking-[0.1em] text-[#625b52] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e]"
+                className="cursor-default text-[10px] font-semibold uppercase tracking-[0.1em] text-[#625b52] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25"
               >
                 Hvorfor?
               </button>
@@ -634,7 +849,7 @@ function StatusPanel({ phase, message, progress, isWorking, onCancel }: { phase:
             </p>
           )}
         </div>
-        {isWorking && <button type="button" onClick={onCancel} className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e]">Annuller</button>}
+        {isWorking && <button type="button" onClick={onCancel} className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25">Annuller</button>}
       </div>
       {isWorking && (
         <div className="mt-4 h-[3px] overflow-hidden bg-[#76866f]/25">

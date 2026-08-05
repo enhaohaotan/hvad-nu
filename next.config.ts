@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https://api.dr.dk https://*.akamaized.net",
               "connect-src 'self' https://api.dr.dk https://*.akamaized.net",
+              "media-src https://api.dr.dk https://*.akamaized.net",
               "font-src 'self'",
               "object-src 'none'",
               "base-uri 'self'",
