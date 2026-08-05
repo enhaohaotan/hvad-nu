@@ -63,7 +63,7 @@ export function TranscriptView({
         )}
       </article>
       {phase === "done" && (
-        <p className="mx-auto max-w-[880px] border-t border-[#29231b]/20 pb-2 pt-3 text-[10px] leading-5 text-[#70695f]">
+        <p className="mx-auto max-w-[880px] border-t border-[#29231b]/20 pb-2 pt-3 text-[12px] leading-[1.8] text-[#70695f] sm:text-[13px]">
           AI kan tage fejl. Sammenlign med lydsporet, hvis noget virker forkert.
         </p>
       )}
