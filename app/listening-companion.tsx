@@ -136,6 +136,17 @@ export function ListeningCompanion() {
     abortRef.current?.abort();
   }
 
+  function clearEpisode() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setUrl("");
+    setEpisode(null);
+    setTranscript("");
+    setPhase("idle");
+    setMessage("");
+    setProgress(0);
+  }
+
   async function copyTranscript() {
     if (!transcript) return;
     await navigator.clipboard.writeText(transcript);
@@ -170,16 +181,28 @@ export function ListeningCompanion() {
               <div className="py-4 sm:py-5 lg:pl-8">
                 <label htmlFor="episode-url" className="editorial-serif text-xl">Indsæt et link til en DR-episode</label>
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                  <input
-                    id="episode-url"
-                    type="url"
-                    inputMode="url"
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                    placeholder="https://www.dr.dk/lyd/…"
-                    disabled={isWorking}
-                    className="min-h-13 flex-1 border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60"
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      id="episode-url"
+                      type="url"
+                      inputMode="url"
+                      value={url}
+                      onChange={(event) => setUrl(event.target.value)}
+                      placeholder="https://www.dr.dk/lyd/…"
+                      disabled={isWorking}
+                      className="min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 pr-16 text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60"
+                    />
+                    {url && (
+                      <button
+                        type="button"
+                        onClick={clearEpisode}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6b655b] underline decoration-[#6b655b]/45 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus:ring-2 focus:ring-[#9f211e]/25"
+                        aria-label="Ryd episodefeltet"
+                      >
+                        Ryd
+                      </button>
+                    )}
+                  </div>
                   <button
                     type="submit"
                     disabled={!url.trim() || isWorking}
