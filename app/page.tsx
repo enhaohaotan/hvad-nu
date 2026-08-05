@@ -1,5 +1,5 @@
-import { ListeningCompanion } from "./listening-companion";
+import { HvadSagdeDe } from "./hvad-sagde-de";
 
 export default function Home() {
-  return <ListeningCompanion />;
+  return <HvadSagdeDe />;
 }
