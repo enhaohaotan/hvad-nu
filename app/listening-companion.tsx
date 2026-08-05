@@ -2,8 +2,17 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { DrEpisode } from "@/lib/dr";
+import {
+  addCachedTranscript,
+  findCachedTranscript,
+  isRegeneratedTranscript,
+  parseTranscriptCache,
+  type TranscriptCacheEntry,
+} from "@/lib/transcript-cache";
 
 const API_KEY_STORAGE = "danish-listening-companion.openai-api-key";
+const TRANSCRIPT_CACHE_STORAGE = "danish-listening-companion.transcripts.v1";
+const TRANSCRIPTION_MODEL = "gpt-transcribe";
 const DR_DISCOVERY_LINKS = [
   { label: "DR Lyd", href: "https://www.dr.dk/lyd" },
   {
@@ -39,18 +48,25 @@ export function ListeningCompanion() {
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
   const [transcript, setTranscript] = useState("");
+  const [cachedEpisodes, setCachedEpisodes] = useState<TranscriptCacheEntry[]>([]);
+  const [showCachedEpisodes, setShowCachedEpisodes] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let storedKey = "";
+    let storedTranscripts: TranscriptCacheEntry[] = [];
     try {
       storedKey = localStorage.getItem(API_KEY_STORAGE) ?? "";
+      storedTranscripts = parseTranscriptCache(
+        localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
+      );
     } catch {
       // Browser storage can be unavailable in hardened privacy modes.
     }
     const frame = requestAnimationFrame(() => {
       setApiKey(storedKey);
       setIsApiKeyInputVisible(!storedKey);
+      setCachedEpisodes(storedTranscripts);
     });
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -61,13 +77,27 @@ export function ListeningCompanion() {
     "preparing",
     "transcribing",
   ].includes(phase);
+  const cachedEpisodeLinks = cachedEpisodes.filter(
+    (entry): entry is TranscriptCacheEntry & {
+      sourceUrl: string;
+      episodeTitle: string;
+    } => Boolean(entry.sourceUrl && entry.episodeTitle),
+  );
 
   async function handleResolve(event: FormEvent) {
     event.preventDefault();
-    if (!url.trim()) return;
+    await resolveEpisode(url);
+  }
+
+  async function resolveEpisode(
+    value: string,
+    selectedCache?: TranscriptCacheEntry,
+  ) {
+    if (!value.trim()) return;
+    setShowCachedEpisodes(false);
 
     try {
-      new URL(url.trim());
+      new URL(value.trim());
     } catch {
       setEpisode(null);
       setTranscript("");
@@ -87,7 +117,7 @@ export function ListeningCompanion() {
     setProgress(0);
 
     try {
-      const response = await fetch(`/api/resolve?url=${encodeURIComponent(url)}`, {
+      const response = await fetch(`/api/resolve?url=${encodeURIComponent(value)}`, {
         signal: controller.signal,
         cache: "no-store",
       });
@@ -99,7 +129,18 @@ export function ListeningCompanion() {
         throw new Error(body.error || "Episoden kunne ikke findes.");
       }
       setEpisode(body.episode);
-      setPhase("ready");
+      const cachedTranscript =
+        selectedCache?.audioUrl === body.episode.audioUrl
+          ? selectedCache.transcript
+          : readCachedTranscript(body.episode.audioUrl);
+      if (cachedTranscript) {
+        setTranscript(cachedTranscript);
+        setPhase("done");
+        setMessage("Gemt transskription hentet fra denne browser");
+        setProgress(100);
+      } else {
+        setPhase("ready");
+      }
     } catch (error) {
       if (controller.signal.aborted) return;
       setPhase("error");
@@ -147,6 +188,8 @@ export function ListeningCompanion() {
         },
       });
       setTranscript(finalText);
+      const updatedCache = cacheTranscript(episode, finalText, true);
+      if (updatedCache) setCachedEpisodes(updatedCache);
 
       setPhase("done");
       setMessage("Transskriptionen er klar");
@@ -176,6 +219,7 @@ export function ListeningCompanion() {
     setPhase("idle");
     setMessage("");
     setProgress(0);
+    setShowCachedEpisodes(false);
   }
 
   async function copyTranscript() {
@@ -236,10 +280,20 @@ export function ListeningCompanion() {
                   <div className="relative flex-1">
                     <input
                       id="episode-url"
-                      type="url"
+                      type="text"
                       inputMode="url"
+                      autoComplete="off"
                       value={url}
-                      onChange={(event) => setUrl(event.target.value)}
+                      onChange={(event) => {
+                        setUrl(event.target.value);
+                        setShowCachedEpisodes(true);
+                      }}
+                      onFocus={() => setShowCachedEpisodes(true)}
+                      onBlur={() => setShowCachedEpisodes(false)}
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-controls="cached-episodes"
+                      aria-expanded={showCachedEpisodes && cachedEpisodeLinks.length > 0}
                       placeholder="https://www.dr.dk/lyd/…"
                       disabled={isWorking}
                       className="min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 pr-16 text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60"
@@ -253,6 +307,49 @@ export function ListeningCompanion() {
                       >
                         Ryd
                       </button>
+                    )}
+                    {showCachedEpisodes && cachedEpisodeLinks.length > 0 && (
+                      <ul
+                        id="cached-episodes"
+                        role="listbox"
+                        aria-label="Gemte transskriptioner"
+                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] py-1 shadow-[0_14px_35px_rgba(43,35,27,0.2)]"
+                      >
+                        {cachedEpisodeLinks.map((entry) => (
+                          <li key={`${entry.model}:${entry.audioUrl}:${entry.cachedAt}`} role="option" aria-selected={false} className="border-b border-[#29231b]/10 last:border-b-0">
+                            <button
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                setShowCachedEpisodes(false);
+                                setUrl(entry.sourceUrl);
+                                void resolveEpisode(entry.sourceUrl, entry);
+                              }}
+                              className="w-full cursor-default px-4 py-3 text-left transition hover:bg-[#76866f]/10 focus:bg-[#76866f]/10 focus:outline-none"
+                            >
+                              <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                                {entry.showTitle && (
+                                  <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9f211e]">
+                                    {entry.showTitle}
+                                  </span>
+                                )}
+                                <time
+                                  dateTime={new Date(entry.firstGeneratedAt ?? entry.cachedAt).toISOString()}
+                                  className="text-[9px] uppercase tracking-[0.08em] text-[#70695f]"
+                                >
+                                  {isRegeneratedTranscript(cachedEpisodes, entry)
+                                    ? "Lavet igen"
+                                    : "Først lavet"}{" "}
+                                  {formatCachedTime(entry.firstGeneratedAt ?? entry.cachedAt)}
+                                </time>
+                              </span>
+                              <span className="mt-0.5 block truncate text-sm font-semibold text-[#403a32]">
+                                {entry.episodeTitle}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                   <button
@@ -322,7 +419,7 @@ export function ListeningCompanion() {
                         </p>
                       )}
                       <p className="mt-2 text-xs leading-5 text-[#6b655b]">
-                        Gemmes i denne browser. Sendes kun ved transskription og gemmes aldrig på vores server.
+                        API-nøglen gemmes i denne browser. Den sendes kun ved transskription og gemmes aldrig på vores server.
                       </p>
                       <details className="mt-3 border-t border-[#29231b]/15 pt-2">
                         <summary className="inline-block cursor-default list-none text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] [&::-webkit-details-marker]:hidden">
@@ -359,7 +456,7 @@ export function ListeningCompanion() {
                       disabled={!apiKey.trim() || isWorking}
                       className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition hover:bg-[#851b18] focus:outline-none focus:ring-2 focus:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      <span>{phase === "done" ? "Lav en ny" : "Lav transskription"}</span>
+                      <span>{phase === "done" ? "Lav ny transskription" : "Lav transskription"}</span>
                       <span className="text-lg" aria-hidden="true">→</span>
                     </button>
                   </div>
@@ -416,6 +513,61 @@ function StepLabel({ number, label }: { number: string; label: string }) {
       <p className="mt-2 text-[10px] font-semibold uppercase leading-4 tracking-[0.15em] text-[#575147]">{label}</p>
     </div>
   );
+}
+
+function readCachedTranscript(audioUrl: string): string {
+  try {
+    const entries = parseTranscriptCache(
+      localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
+    );
+    return findCachedTranscript(entries, audioUrl, TRANSCRIPTION_MODEL)?.transcript ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function formatCachedTime(value: number): string {
+  return new Intl.DateTimeFormat("da-DK", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function cacheTranscript(
+  episode: DrEpisode,
+  transcript: string,
+  createNewVersion = false,
+): TranscriptCacheEntry[] | null {
+  try {
+    const entries = parseTranscriptCache(
+      localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
+    );
+    const previousVersion = findCachedTranscript(
+      entries,
+      episode.audioUrl,
+      TRANSCRIPTION_MODEL,
+    );
+    const updated = addCachedTranscript(
+      entries,
+      {
+        audioUrl: episode.audioUrl,
+        model: TRANSCRIPTION_MODEL,
+        transcript,
+        cachedAt: Date.now(),
+        firstGeneratedAt: createNewVersion ? Date.now() : undefined,
+        isRegenerated: createNewVersion && Boolean(previousVersion),
+        sourceUrl: episode.sourceUrl,
+        episodeTitle: episode.episodeTitle,
+        showTitle: episode.showTitle,
+      },
+      createNewVersion,
+    );
+    localStorage.setItem(TRANSCRIPT_CACHE_STORAGE, JSON.stringify(updated));
+    return updated;
+  } catch {
+    // A full or unavailable browser store must not interrupt transcription.
+    return null;
+  }
 }
 
 function EpisodePreview({ episode }: { episode: DrEpisode }) {
