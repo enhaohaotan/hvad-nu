@@ -623,7 +623,7 @@ function StatusPanel({ phase, message, progress, isWorking, onCancel }: { phase:
       </div>
       {isWorking && (
         <div className="mt-4 h-[3px] overflow-hidden bg-[#76866f]/25">
-          <div className={`h-full bg-[#9f211e] transition-[width] duration-300 ${progress === 0 ? "w-1/3 animate-[pulse_1.4s_ease-in-out_infinite]" : ""}`} style={progress > 0 ? { width: `${progress}%` } : undefined} />
+          <div className="h-full bg-[#9f211e] transition-[width] duration-300" style={{ width: `${progress}%` }} />
         </div>
       )}
     </div>
