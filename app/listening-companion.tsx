@@ -489,6 +489,11 @@ export function ListeningCompanion() {
                 {transcript}
                 {phase === "transcribing" && <span className="ml-1 inline-block h-5 w-0.5 animate-pulse bg-[#9f211e] align-middle" aria-hidden="true" />}
               </article>
+              {phase === "done" && (
+                <p className="mx-auto max-w-[880px] border-t border-[#29231b]/20 pb-2 pt-3 text-[10px] leading-5 text-[#70695f]">
+                  AI kan tage fejl. Sammenlign med lydsporet, hvis noget virker forkert.
+                </p>
+              )}
             </section>
           )}
         </section>
