@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Hva’ sagde de?",
-  description: "Gør enhver DR-podcastepisode til en tydelig dansk transskription — klar til at læse med, mens du lytter.",
+  description: "Gør enhver DR LYD-podcastepisode til en tydelig dansk transskription — klar til at læse med, mens du lytter.",
   openGraph: {
     title: "Hva’ sagde de?",
     description: "Fra dansk lyd til læsevenlige ord.",

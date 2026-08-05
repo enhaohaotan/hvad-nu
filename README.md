@@ -27,7 +27,7 @@ Then open [http://localhost:3000](http://localhost:3000).
 
 1. The resolver accepts a specific `dr.dk/lyd` episode URL, derives its public
    RSS feed, and validates the DR audio enclosure.
-2. The backend downloads the original MP3 directly from DR.
+2. The backend downloads the original MP3 directly from DR LYD.
 3. It splits MP3 frames into roughly ten-minute chunks, with 24 MB as a hard
    limit. Audio is not re-encoded.
 4. Each chunk is sent to OpenAI using `gpt-transcribe` with Danish as the
