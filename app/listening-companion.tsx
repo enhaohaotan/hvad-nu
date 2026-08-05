@@ -50,7 +50,9 @@ export function ListeningCompanion() {
   const [transcript, setTranscript] = useState("");
   const [cachedEpisodes, setCachedEpisodes] = useState<TranscriptCacheEntry[]>([]);
   const [showCachedEpisodes, setShowCachedEpisodes] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const copyFeedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let storedKey = "";
@@ -68,7 +70,10 @@ export function ListeningCompanion() {
       setIsApiKeyInputVisible(!storedKey);
       setCachedEpisodes(storedTranscripts);
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (copyFeedbackRef.current) clearTimeout(copyFeedbackRef.current);
+    };
   }, []);
 
   const isWorking = [
@@ -95,6 +100,7 @@ export function ListeningCompanion() {
   ) {
     if (!value.trim()) return;
     setShowCachedEpisodes(false);
+    setIsCopied(false);
 
     try {
       new URL(value.trim());
@@ -172,6 +178,7 @@ export function ListeningCompanion() {
     setMessage("Downloader episoden fra DR…");
     setProgress(0);
     setPhase("downloading");
+    setIsCopied(false);
 
     try {
       const finalText = await transcribeEpisode({
@@ -220,12 +227,15 @@ export function ListeningCompanion() {
     setMessage("");
     setProgress(0);
     setShowCachedEpisodes(false);
+    setIsCopied(false);
   }
 
   async function copyTranscript() {
     if (!transcript) return;
     await navigator.clipboard.writeText(transcript);
-    setMessage("Kopieret til udklipsholderen");
+    setIsCopied(true);
+    if (copyFeedbackRef.current) clearTimeout(copyFeedbackRef.current);
+    copyFeedbackRef.current = setTimeout(() => setIsCopied(false), 2000);
   }
 
   function downloadTranscript() {
@@ -477,8 +487,8 @@ export function ListeningCompanion() {
                   <h2 id="transcript-title" className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl">{episode?.episodeTitle}</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={copyTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
-                    Kopiér tekst
+                  <button type="button" onClick={copyTranscript} aria-live="polite" className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
+                    {isCopied ? "Kopieret" : "Kopiér tekst"}
                   </button>
                   <button type="button" onClick={downloadTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
                     Hent tekst
