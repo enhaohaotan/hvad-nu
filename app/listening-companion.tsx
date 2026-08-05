@@ -185,7 +185,7 @@ export function ListeningCompanion() {
         <header className="flex items-center justify-between gap-4 border-b border-[#262018]/70 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] sm:pb-3 sm:text-xs sm:tracking-[0.18em]">
           <span>Hva’ sagde de?</span>
           <span className="text-right text-[#66745e]">
-            Transskription af DR-podcasts
+            For dem, der stadig siger “hva’?”
           </span>
         </header>
 
@@ -367,10 +367,35 @@ function EpisodePreview({ episode }: { episode: DrEpisode }) {
 
 function StatusPanel({ phase, message, progress, isWorking, onCancel }: { phase: Phase; message: string; progress: number; isWorking: boolean; onCancel: () => void }) {
   const isError = phase === "error";
+  const [showErrorDetail, setShowErrorDetail] = useState(false);
+  const errorDetail =
+    isError && message === "Episoden findes ikke i DR’s offentlige RSS-feed."
+      ? "Det kan skyldes DR’s udgivelsespolitik: De nyeste episoder er ikke altid tilgængelige i det offentlige RSS-feed med det samme. Prøv en episode fra en tidligere dag."
+      : "";
+
   return (
     <div className={`border-t border-[#9f211e]/45 px-4 py-5 sm:px-6 ${isError ? "bg-[#9f211e]/5" : ""}`} role={isError ? "alert" : "status"}>
       <div className="flex items-center justify-between gap-4">
-        <p className={`text-xs font-semibold uppercase tracking-[0.12em] ${isError ? "text-[#9f211e]" : "text-[#575147]"}`}>{message}</p>
+        <div>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <p className={`text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-[11px] ${isError ? "text-[#9f211e]" : "text-[#575147]"}`}>{message}</p>
+            {errorDetail && (
+              <button
+                type="button"
+                onClick={() => setShowErrorDetail((visible) => !visible)}
+                aria-expanded={showErrorDetail}
+                className="cursor-default text-[10px] font-semibold uppercase tracking-[0.1em] text-[#625b52] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e]"
+              >
+                Hvorfor?
+              </button>
+            )}
+          </div>
+          {errorDetail && showErrorDetail && (
+            <p className="mt-2 max-w-[720px] text-xs font-normal normal-case leading-5 tracking-normal text-[#625b52] sm:text-[13px] sm:leading-6">
+              {errorDetail}
+            </p>
+          )}
+        </div>
         {isWorking && <button type="button" onClick={onCancel} className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e]">Annuller</button>}
       </div>
       {isWorking && (
