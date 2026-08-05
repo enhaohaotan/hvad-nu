@@ -26,6 +26,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+button:not(:disabled),
+a[href],
+summary,
+select,
+input[type="range"] {
+  cursor: pointer;
+}
+
+button:disabled,
+input[type="range"]:disabled {
+  cursor: not-allowed;
+}
+
 .editorial-serif {
   font-family: "Iowan Old Style", Baskerville, "Times New Roman", Times, serif;
   font-weight: 400;

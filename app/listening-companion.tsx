@@ -150,7 +150,7 @@ export function ListeningCompanion() {
       if (cachedTranscript) {
         setTranscript(cachedTranscript);
         setPhase("done");
-        setMessage("Gemt transskription hentet fra denne browser");
+        setMessage("Episoden er transskriberet før — den gemte tekst vises igen");
         setProgress(100);
       } else {
         setPhase("ready");
@@ -410,7 +410,7 @@ export function ListeningCompanion() {
                                 setUrl(entry.sourceUrl);
                                 void resolveEpisode(entry.sourceUrl, entry);
                               }}
-                              className="w-full cursor-default px-4 py-3 text-left transition hover:bg-[#76866f]/10 focus:outline-none focus-visible:bg-[#76866f]/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#9f211e]/25"
+                              className="w-full cursor-pointer px-4 py-3 text-left transition hover:bg-[#76866f]/10 focus:outline-none focus-visible:bg-[#76866f]/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#9f211e]/25"
                             >
                               <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                                 {entry.showTitle && (
@@ -440,7 +440,7 @@ export function ListeningCompanion() {
                   <button
                     type="submit"
                     disabled={!url.trim() || isWorking}
-                    className="min-h-13 border border-[#1d1915] bg-[#1d1915] px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#f8f2e6] transition hover:bg-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="min-h-13 border border-[#1d1915] bg-[#1d1915] px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#f8f2e6] transition enabled:hover:bg-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {phase === "resolving" ? "Finder…" : "Find episode"}
                   </button>
@@ -456,7 +456,7 @@ export function ListeningCompanion() {
                       href={link.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-semibold text-[#4f5f49] underline decoration-[#4f5f49]/40 underline-offset-4 transition hover:text-[#9f211e]"
+                      className="cursor-pointer font-semibold text-[#4f5f49] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e]"
                     >
                       {link.label} <span aria-hidden="true">↗</span>
                     </a>
@@ -482,7 +482,7 @@ export function ListeningCompanion() {
                       <div className="flex items-end justify-between gap-4">
                         <p className="editorial-serif text-xl">OpenAI API-nøgle</p>
                         {apiKey && (
-                          <button type="button" onClick={forgetApiKey} disabled={isWorking} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25 disabled:opacity-40">
+                          <button type="button" onClick={forgetApiKey} disabled={isWorking} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 enabled:hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25 disabled:opacity-40">
                             Fjern nøgle
                           </button>
                         )}
@@ -511,7 +511,7 @@ export function ListeningCompanion() {
                         API-nøglen gemmes i denne browser. Den sendes kun ved transskription og gemmes aldrig på vores server.
                       </p>
                       <details className="mt-3 border-t border-[#29231b]/15 pt-2">
-                        <summary className="inline-block cursor-default list-none text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] [&::-webkit-details-marker]:hidden">
+                        <summary className="inline-block cursor-pointer list-none text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] [&::-webkit-details-marker]:hidden">
                           Se estimeret OpenAI-pris
                         </summary>
                         <div className="mt-2 overflow-hidden border border-[#29231b]/20">
@@ -543,7 +543,7 @@ export function ListeningCompanion() {
                       type="button"
                       onClick={handleTranscribe}
                       disabled={!apiKey.trim() || isWorking}
-                      className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition hover:bg-[#851b18] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition enabled:hover:bg-[#851b18] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <span>{phase === "done" ? "Lav ny transskription" : "Lav transskription"}</span>
                       <span className="text-lg" aria-hidden="true">→</span>
@@ -588,8 +588,8 @@ export function ListeningCompanion() {
         </section>
 
         <footer className="mt-14 flex items-center justify-between gap-4 border-t border-[#262018]/70 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#575147]">
-          <address className="not-italic normal-case tracking-normal">
-            <a className="cursor-default underline decoration-current/35 underline-offset-4 transition hover:text-[#9f211e]" href="mailto:enhaohao.tan@gmail.com">
+          <address className="not-italic">
+            <a className="cursor-pointer underline decoration-current/35 underline-offset-4 transition hover:text-[#9f211e]" href="mailto:enhaohao.tan@gmail.com">
               Kontakt
             </a>
           </address>
@@ -630,7 +630,7 @@ export function ListeningCompanion() {
               <button
                 type="button"
                 onClick={closePlayer}
-                className="shrink-0 cursor-default text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d8d0c4] underline decoration-current/40 underline-offset-4 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                className="shrink-0 cursor-pointer text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d8d0c4] underline decoration-current/40 underline-offset-4 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 Luk
               </button>
@@ -641,7 +641,7 @@ export function ListeningCompanion() {
                 type="button"
                 onClick={togglePlayback}
                 aria-label={isPlaying ? "Pause" : "Afspil"}
-                className="flex h-10 w-10 shrink-0 cursor-default items-center justify-center bg-[#9f211e] text-sm transition hover:bg-[#bd2925] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center bg-[#9f211e] text-sm transition hover:bg-[#bd2925] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>
               </button>
@@ -649,7 +649,7 @@ export function ListeningCompanion() {
                 type="button"
                 onClick={() => seekBy(-5)}
                 aria-label="Fem sekunder tilbage"
-                className="h-10 shrink-0 cursor-default border border-[#f3eddf]/35 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition hover:border-[#f3eddf] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                className="h-10 shrink-0 cursor-pointer border border-[#f3eddf]/35 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition hover:border-[#f3eddf] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 −5 s
               </button>
@@ -657,7 +657,7 @@ export function ListeningCompanion() {
                 type="button"
                 onClick={() => seekBy(5)}
                 aria-label="Fem sekunder frem"
-                className="h-10 shrink-0 cursor-default border border-[#f3eddf]/35 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition hover:border-[#f3eddf] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                className="h-10 shrink-0 cursor-pointer border border-[#f3eddf]/35 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] transition hover:border-[#f3eddf] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 +5 s
               </button>
@@ -688,7 +688,7 @@ export function ListeningCompanion() {
                   if (audioRef.current) audioRef.current.playbackRate = nextRate;
                   setPlaybackRate(nextRate);
                 }}
-                className="h-10 cursor-default border border-[#f3eddf]/35 bg-[#1d1915] px-2 text-[10px] font-semibold text-[#f3eddf] outline-none"
+                className="h-10 cursor-pointer border border-[#f3eddf]/35 bg-[#1d1915] px-2 text-[10px] font-semibold text-[#f3eddf] outline-none"
               >
                 {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
                   <option key={rate} value={rate}>{rate.toLocaleString("da-DK")}×</option>
@@ -807,7 +807,7 @@ function EpisodePreview({
           <button
             type="button"
             onClick={onPlay}
-            className="cursor-default border border-[#29231b]/45 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#403a32] transition hover:border-[#9f211e] hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/20"
+            className="cursor-pointer border border-[#29231b]/45 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#403a32] transition hover:border-[#9f211e] hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/20"
           >
             <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>{" "}
             {isPlaying ? "Pause" : "Afspil"}
@@ -837,7 +837,7 @@ function StatusPanel({ phase, message, progress, isWorking, onCancel }: { phase:
                 type="button"
                 onClick={() => setShowErrorDetail((visible) => !visible)}
                 aria-expanded={showErrorDetail}
-                className="cursor-default text-[10px] font-semibold uppercase tracking-[0.1em] text-[#625b52] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25"
+                className="cursor-pointer text-[10px] font-semibold uppercase tracking-[0.1em] text-[#625b52] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25"
               >
                 Hvorfor?
               </button>
