@@ -283,6 +283,7 @@ export function HvadSagdeDe() {
   async function handleTranscribe() {
     if (!episode || !apiKey.trim() || isWorking) return;
 
+    setIsApiKeyInputVisible(false);
     const controller = new AbortController();
     abortRef.current = controller;
     setTranscript("");

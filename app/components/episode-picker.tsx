@@ -42,6 +42,7 @@ export function EpisodePicker({
   latestSuggestion,
   latestGenstartEpisode,
   suggestionsReady,
+  readOnly = false,
   onUrlChange,
   onResolve,
   onClear,
@@ -54,6 +55,7 @@ export function EpisodePicker({
   latestSuggestion: { referenceUrl: string; episode: DrEpisode } | null;
   latestGenstartEpisode: DrEpisode | null;
   suggestionsReady: boolean;
+  readOnly?: boolean;
   onUrlChange: (value: string) => void;
   onResolve: (value: string, selectedCache?: TranscriptCacheEntry) => void;
   onClear: () => void;
@@ -160,10 +162,11 @@ export function EpisodePicker({
               aria-controls="cached-episodes"
               aria-expanded={showSuggestions && hasSuggestions}
               placeholder="https://www.dr.dk/lyd/…"
+              readOnly={readOnly}
               disabled={isWorking}
-              className="min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 pr-16 text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60"
+              className={`min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60 ${readOnly ? "cursor-default" : "pr-16"}`}
             />
-            {url && (
+            {url && !readOnly && (
               <button
                 type="button"
                 onClick={() => {
