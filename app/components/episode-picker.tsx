@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { DrEpisode } from "@/lib/dr";
 import { formatCachedTime, formatEpisodeMeta } from "@/lib/episode-format";
 import {
@@ -25,6 +26,13 @@ const DR_DISCOVERY_LINKS = [
     href: "https://www.dr.dk/lyd/p1/klog-paa-sprog-1624041693000",
   },
 ] as const;
+
+type SuggestionPosition = {
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+};
 
 export function EpisodePicker({
   url,
@@ -52,6 +60,9 @@ export function EpisodePicker({
   onRemoveHistory: (entry: TranscriptCacheEntry) => void;
 }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionPosition, setSuggestionPosition] =
+    useState<SuggestionPosition | null>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const lastGeneratedSourceUrl =
     cachedEpisodes.find((entry) => entry.sourceUrl)?.sourceUrl ?? "";
   const cachedEpisodeLinks = cachedEpisodes.filter(
@@ -83,8 +94,27 @@ export function EpisodePicker({
         latestSeriesEpisode,
     ) || visibleCachedEpisodeLinks.length > 0;
 
+  useEffect(() => {
+    if (!showSuggestions) return;
+
+    const updatePosition = () => {
+      const container = inputContainerRef.current;
+      if (container) setSuggestionPosition(positionSuggestions(container));
+    };
+
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [showSuggestions]);
+
   function openSuggestions() {
-    setShowSuggestions(suggestionsReady);
+    const container = inputContainerRef.current;
+    if (!suggestionsReady || !container) return;
+    setSuggestionPosition(positionSuggestions(container));
+    setShowSuggestions(true);
   }
 
   function selectEpisode(value: string, selectedCache?: TranscriptCacheEntry) {
@@ -111,7 +141,7 @@ export function EpisodePicker({
           Indsæt et link til en DR LYD-episode
         </label>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
+          <div ref={inputContainerRef} className="relative flex-1">
             <input
               id="episode-url"
               type="text"
@@ -146,13 +176,18 @@ export function EpisodePicker({
                 Ryd
               </button>
             )}
-            {showSuggestions && hasSuggestions && (
-              <ul
-                id="cached-episodes"
-                role="listbox"
-                aria-label="Gemte transskriptioner"
-                className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] shadow-[0_14px_35px_rgba(43,35,27,0.2)] [scrollbar-color:#8b857a_#eee8dc] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-[#f7f2e8] [&::-webkit-scrollbar-thumb]:bg-[#8b857a] [&::-webkit-scrollbar-thumb:hover]:bg-[#566550] [&::-webkit-scrollbar-track]:bg-[#eee8dc]"
-              >
+            {showSuggestions &&
+              hasSuggestions &&
+              suggestionPosition &&
+              typeof document !== "undefined" &&
+              createPortal(
+                <ul
+                  id="cached-episodes"
+                  role="listbox"
+                  aria-label="Gemte transskriptioner"
+                  className="fixed z-50 overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] shadow-[0_14px_35px_rgba(43,35,27,0.2)] [scrollbar-color:#8b857a_#eee8dc] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-[#f7f2e8] [&::-webkit-scrollbar-thumb]:bg-[#8b857a] [&::-webkit-scrollbar-thumb:hover]:bg-[#566550] [&::-webkit-scrollbar-track]:bg-[#eee8dc]"
+                  style={suggestionPosition}
+                >
                 {showFirstVisitSuggestion && latestGenstartEpisode && (
                   <li role="option" aria-selected={false}>
                     <SuggestionButton
@@ -248,8 +283,9 @@ export function EpisodePicker({
                     </li>
                   );
                 })}
-              </ul>
-            )}
+                </ul>,
+                document.body,
+              )}
           </div>
           <button
             type="submit"
@@ -279,6 +315,31 @@ export function EpisodePicker({
       </div>
     </form>
   );
+}
+
+function positionSuggestions(container: HTMLDivElement): SuggestionPosition {
+  const rect = container.getBoundingClientRect();
+  const margin = 12;
+  const gap = 6;
+  const availableBelow = window.innerHeight - rect.bottom - gap - margin;
+  const availableAbove = rect.top - gap - margin;
+  const placeBelow = availableBelow >= 180 || availableBelow >= availableAbove;
+  const availableHeight = placeBelow ? availableBelow : availableAbove;
+  const maxHeight = Math.max(80, Math.min(288, availableHeight));
+  const width = Math.min(rect.width, window.innerWidth - margin * 2);
+  const left = Math.min(
+    Math.max(margin, rect.left),
+    window.innerWidth - width - margin,
+  );
+
+  return {
+    left,
+    top: placeBelow
+      ? rect.bottom + gap
+      : Math.max(margin, rect.top - gap - maxHeight),
+    width,
+    maxHeight,
+  };
 }
 
 function SuggestionButton({
