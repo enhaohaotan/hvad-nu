@@ -145,10 +145,11 @@ export function ListeningCompanion() {
   return (
     <main className="min-h-screen bg-[#9f211e] p-2.5 text-[#1d1915] sm:p-5 lg:p-7">
       <div className="editorial-sheet min-h-[calc(100vh-20px)] w-full bg-[#f3eddf] px-5 pb-8 pt-6 shadow-[0_24px_80px_rgba(43,8,6,0.28)] sm:min-h-[calc(100vh-40px)] sm:px-10 sm:pb-10 lg:min-h-[calc(100vh-56px)] lg:px-16 lg:pt-9">
-        <header className="border-b border-[#262018]/70 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] sm:pb-3 sm:text-xs sm:tracking-[0.18em]">
-          <a href="#top" aria-label="Hva’ sagde de? – forside">
-            Hva’ sagde de?
-          </a>
+        <header className="flex items-center justify-between gap-4 border-b border-[#262018]/70 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] sm:pb-3 sm:text-xs sm:tracking-[0.18em]">
+          <span>Hva’ sagde de?</span>
+          <span className="text-right text-[#66745e]">
+            Transskription af DR-podcasts
+          </span>
         </header>
 
         <section id="top" className="pt-6 sm:pt-14 lg:pt-16">
@@ -238,7 +239,7 @@ export function ListeningCompanion() {
               </div>
             )}
 
-            {(isWorking || message) && (
+            {phase !== "resolving" && (isWorking || message) && (
               <StatusPanel phase={phase} message={message} progress={progress} isWorking={isWorking} onCancel={cancel} />
             )}
           </section>
