@@ -584,7 +584,7 @@ export function ListeningCompanion() {
                         id="cached-episodes"
                         role="listbox"
                         aria-label="Gemte transskriptioner"
-                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] shadow-[0_14px_35px_rgba(43,35,27,0.2)]"
+                        className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] shadow-[0_14px_35px_rgba(43,35,27,0.2)] [scrollbar-color:#8b857a_#eee8dc] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-[#f7f2e8] [&::-webkit-scrollbar-thumb]:bg-[#8b857a] [&::-webkit-scrollbar-thumb:hover]:bg-[#566550] [&::-webkit-scrollbar-track]:bg-[#eee8dc]"
                       >
                         {showFirstVisitSuggestion && latestGenstartEpisode && (
                           <li role="option" aria-selected={false}>
