@@ -33,6 +33,7 @@ type Phase =
 export function ListeningCompanion() {
   const [url, setUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [isApiKeyInputVisible, setIsApiKeyInputVisible] = useState(false);
   const [episode, setEpisode] = useState<DrEpisode | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
@@ -47,7 +48,10 @@ export function ListeningCompanion() {
     } catch {
       // Browser storage can be unavailable in hardened privacy modes.
     }
-    const frame = requestAnimationFrame(() => setApiKey(storedKey));
+    const frame = requestAnimationFrame(() => {
+      setApiKey(storedKey);
+      setIsApiKeyInputVisible(!storedKey);
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
 
@@ -115,6 +119,7 @@ export function ListeningCompanion() {
 
   function forgetApiKey() {
     handleApiKey("");
+    setIsApiKeyInputVisible(true);
   }
 
   async function handleTranscribe() {
@@ -177,6 +182,27 @@ export function ListeningCompanion() {
     if (!transcript) return;
     await navigator.clipboard.writeText(transcript);
     setMessage("Kopieret til udklipsholderen");
+  }
+
+  function downloadTranscript() {
+    if (!transcript) return;
+
+    const title = episode?.episodeTitle || "transskription";
+    const safeTitle = title
+      .toLocaleLowerCase("da")
+      .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+      .replace(/^-|-$/g, "") || "transskription";
+    const filename = `${safeTitle}.txt`;
+    const href = URL.createObjectURL(
+      new Blob([transcript], { type: "text/plain;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(href);
   }
 
   return (
@@ -268,27 +294,63 @@ export function ListeningCompanion() {
 
                     <div className="mt-7 border-t border-[#29231b]/20 pt-6">
                       <div className="flex items-end justify-between gap-4">
-                        <label htmlFor="api-key" className="editorial-serif text-xl">OpenAI API-nøgle</label>
+                        <p className="editorial-serif text-xl">OpenAI API-nøgle</p>
                         {apiKey && (
-                          <button type="button" onClick={forgetApiKey} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e]">
-                            Glem nøgle
+                          <button type="button" onClick={forgetApiKey} disabled={isWorking} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#9f211e] disabled:opacity-40">
+                            Fjern nøgle
                           </button>
                         )}
                       </div>
-                      <input
-                        id="api-key"
-                        type="password"
-                        value={apiKey}
-                        onChange={(event) => handleApiKey(event.target.value)}
-                        placeholder="sk-…"
-                        autoComplete="off"
-                        spellCheck={false}
-                        disabled={isWorking}
-                        className="mt-3 min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 font-mono text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60"
-                      />
+                      {isApiKeyInputVisible ? (
+                        <>
+                          <label htmlFor="api-key" className="sr-only">OpenAI API-nøgle</label>
+                          <input
+                            id="api-key"
+                            type="password"
+                            value={apiKey}
+                            onChange={(event) => handleApiKey(event.target.value)}
+                            placeholder="sk-…"
+                            autoComplete="off"
+                            spellCheck={false}
+                            disabled={isWorking}
+                            className="mt-3 min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 font-mono text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60"
+                          />
+                        </>
+                      ) : (
+                        <p className="mt-3 border border-[#76866f]/40 bg-[#76866f]/5 px-4 py-3 text-xs font-semibold text-[#4f5f49]">
+                          API-nøglen er gemt i denne browser
+                        </p>
+                      )}
                       <p className="mt-2 text-xs leading-5 text-[#6b655b]">
                         Gemmes i denne browser. Sendes kun ved transskription og gemmes aldrig på vores server.
                       </p>
+                      <details className="mt-3 border-t border-[#29231b]/15 pt-2">
+                        <summary className="inline-block cursor-default list-none text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] underline decoration-current/40 underline-offset-4 transition hover:text-[#9f211e] [&::-webkit-details-marker]:hidden">
+                          Se estimeret OpenAI-pris
+                        </summary>
+                        <div className="mt-2 overflow-hidden border border-[#29231b]/20">
+                          <p className="px-4 py-2 text-[10px] text-[#70695f]">
+                            Model: gpt-transcribe · 0,0045 USD/min.
+                          </p>
+                          <table className="w-full table-fixed text-left text-xs text-[#575147]">
+                            <caption className="sr-only">Estimeret pris efter episodens varighed</caption>
+                            <thead className="bg-[#76866f]/5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#70695f]">
+                              <tr>
+                                <th className="px-4 py-2" scope="col">Varighed</th>
+                                <th className="px-4 py-2" scope="col">Pris</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#29231b]/10">
+                              <tr><td className="px-4 py-2">20 min.</td><td className="px-4 py-2">ca. 0,59 kr.</td></tr>
+                              <tr><td className="px-4 py-2">40 min.</td><td className="px-4 py-2">ca. 1,18 kr.</td></tr>
+                              <tr><td className="px-4 py-2">60 min.</td><td className="px-4 py-2">ca. 1,77 kr.</td></tr>
+                            </tbody>
+                          </table>
+                          <p className="border-t border-[#29231b]/15 px-4 py-2 text-[10px] leading-4 text-[#70695f]">
+                            Omregnet med 1 USD ≈ 6,57 kr. Betales direkte til OpenAI. Priser og valutakurs kan ændre sig.
+                          </p>
+                        </div>
+                      </details>
                     </div>
 
                     <button
@@ -317,9 +379,14 @@ export function ListeningCompanion() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9f211e]">Transskriptionen</p>
                   <h2 id="transcript-title" className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl">{episode?.episodeTitle}</h2>
                 </div>
-                <button type="button" onClick={copyTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
-                  Kopiér tekst
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={copyTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
+                    Kopiér tekst
+                  </button>
+                  <button type="button" onClick={downloadTranscript} className="w-fit border border-[#29231b] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus:ring-2 focus:ring-black/20">
+                    Hent tekst
+                  </button>
+                </div>
               </div>
               <article aria-live="polite" className="editorial-copy mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[18px] leading-[1.85] text-[#332e27] sm:py-12 sm:text-[20px]">
                 {transcript}
@@ -329,8 +396,12 @@ export function ListeningCompanion() {
           )}
         </section>
 
-        <footer className="mt-14 flex flex-col gap-2 border-t border-[#262018]/70 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#575147] sm:flex-row sm:items-center sm:justify-between">
-          <span>Til nysgerrige danskstuderende</span>
+        <footer className="mt-14 flex items-center justify-between gap-4 border-t border-[#262018]/70 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#575147]">
+          <address className="not-italic normal-case tracking-normal">
+            <a className="cursor-default underline decoration-current/35 underline-offset-4 transition hover:text-[#9f211e]" href="mailto:enhaohao.tan@gmail.com">
+              Kontakt
+            </a>
+          </address>
           <span>© 2026 Enhao Tan</span>
         </footer>
       </div>
