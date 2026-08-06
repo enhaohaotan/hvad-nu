@@ -139,7 +139,7 @@ export function EpisodePicker({
         <StepLabel number="01" label="Vælg en udsendelse" />
       </div>
       <div className="py-4 sm:py-5 lg:pl-8">
-        <label htmlFor="episode-url" className="editorial-serif text-xl">
+        <label className="editorial-serif text-xl">
           Indsæt et link til en DR LYD-episode
         </label>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
