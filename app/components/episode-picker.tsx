@@ -139,13 +139,14 @@ export function EpisodePicker({
         <StepLabel number="01" label="Vælg en udsendelse" />
       </div>
       <div className="py-4 sm:py-5 lg:pl-8">
-        <label className="editorial-serif text-xl">
+        <p id="episode-url-label" className="editorial-serif text-xl">
           Indsæt et link til en DR LYD-episode
-        </label>
+        </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <div ref={inputContainerRef} className="relative flex-1">
             <input
               id="episode-url"
+              aria-labelledby="episode-url-label"
               type="text"
               inputMode="url"
               autoComplete="off"

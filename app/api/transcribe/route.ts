@@ -92,9 +92,19 @@ async function runTranscription({
 }) {
   emitProgress(emit, "downloading", "Finder episoden i DR LYDs RSS-feed…", 0);
   const episode = await resolveDrEpisode(drUrl, signal);
-  const audio = await downloadAudio(episode.audioUrl, signal, (progress) => {
-    emitProgress(emit, "downloading", "Downloader episoden fra DR LYD…", progress * 0.35);
-  });
+  const audio = await downloadAudio(
+    episode.audioUrl,
+    episode.sourceUrl,
+    signal,
+    (progress) => {
+      emitProgress(
+        emit,
+        "downloading",
+        "Downloader episoden fra DR LYD…",
+        progress * 0.35,
+      );
+    },
+  );
 
   emitProgress(emit, "preparing", "Opdeler den oprindelige MP3-fil i dele på cirka ti minutter…", 36);
   const chunks = splitMp3(audio);
@@ -137,12 +147,42 @@ async function runTranscription({
 
 async function downloadAudio(
   url: string,
+  sourceUrl: string,
   signal: AbortSignal,
   onProgress: (progress: number) => void,
 ): Promise<ArrayBuffer> {
-  const response = await fetch(url, { signal, cache: "no-store" });
+  const response = await fetch(url, {
+    signal,
+    cache: "no-store",
+    headers: {
+      Accept:
+        "audio/mpeg, audio/*;q=0.9, application/octet-stream;q=0.8, */*;q=0.5",
+      "Accept-Language": "da-DK,da;q=0.9,en;q=0.5",
+      Referer: sourceUrl,
+      // Some podcast/CDN gateways reject anonymous server-runtime clients.
+      // Identify this as a podcast download instead of relying on Node's UA.
+      "User-Agent": "HvadSagdeDe/0.1 (DR LYD podcast transcription)",
+    },
+  });
   if (!response.ok || !response.body) {
-    throw new Error("Lyden til episoden kunne ikke downloades fra DR LYD.");
+    const region = process.env.VERCEL_REGION || "local";
+    console.error("DR audio download failed", {
+      status: response.status,
+      statusText: response.statusText,
+      region,
+      redirected: response.redirected,
+      host: safeHost(response.url || url),
+    });
+    throw new DrAudioDownloadError(
+      "Lyden til episoden kunne ikke downloades fra DR LYD.",
+      [
+        `Tidspunkt: ${new Date().toISOString()}`,
+        `Vercel-region: ${region}`,
+        `HTTP-status: ${response.status} ${response.statusText}`.trim(),
+        `Viderestillet til CDN: ${response.redirected ? "ja" : "nej"}`,
+        `Svar-vært: ${safeHost(response.url || url)}`,
+      ].join("\n"),
+    );
   }
 
   const total = Number(response.headers.get("content-length")) || 0;
@@ -295,6 +335,13 @@ class OpenAiTranscriptionError extends Error {
   }
 }
 
+class DrAudioDownloadError extends Error {
+  constructor(message: string, readonly debug: string) {
+    super(message);
+    this.name = "DrAudioDownloadError";
+  }
+}
+
 async function openAiError(
   response: Response,
   chunkIndex: number,
@@ -336,7 +383,16 @@ function safeErrorMessage(error: unknown): string {
 }
 
 function safeErrorDebug(error: unknown): string | undefined {
-  return error instanceof OpenAiTranscriptionError
+  return error instanceof OpenAiTranscriptionError ||
+    error instanceof DrAudioDownloadError
     ? error.debug
     : undefined;
+}
+
+function safeHost(value: string): string {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return "ukendt";
+  }
 }
