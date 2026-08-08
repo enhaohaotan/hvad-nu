@@ -211,22 +211,15 @@ export function TranscriptView({
           >
             <button
               type="button"
-              role="switch"
-              aria-checked={showTranslation}
               onClick={toggleTranslation}
-              className="group flex h-full shrink-0 items-center gap-3 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#29231b] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/20"
-              aria-label={`${showTranslation ? "Skjul" : "Vis"} oversættelse`}
+              className="group flex h-full shrink-0 items-center px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#29231b] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/20"
             >
-              <span>{isTranslating ? "Oversætter…" : "Oversæt"}</span>
-              <span
-                aria-hidden="true"
-                className={`flex h-[18px] w-8 items-center border p-0.5 transition-colors ${
-                  showTranslation
-                    ? "justify-end border-[#29231b] bg-[#29231b] group-hover:border-[#f8f2e6]/55"
-                    : "justify-start border-[#29231b]/45 bg-[#ded7ca] group-hover:border-[#f8f2e6]/55 group-hover:bg-white/10"
-                }`}
-              >
-                <span className="h-3 w-3 shrink-0 bg-[#f8f2e6] shadow-sm" />
+              <span>
+                {isTranslating
+                  ? "Oversætter…"
+                  : showTranslation
+                    ? "Skjul oversættelse"
+                    : "Vis oversættelse"}
               </span>
             </button>
             <div

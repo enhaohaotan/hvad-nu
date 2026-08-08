@@ -104,3 +104,127 @@ test("uses accurate transcript text with a separate word timeline", () => {
     ["Andrew Tate bliver anholdt.", "Han nægter sig skyldig."],
   );
 });
+
+test("realigns after a long Whisper-only passage", () => {
+  const opening = [
+    word("De", 0),
+    word("får", 0.3),
+    word("håndjern", 0.6),
+    word("på.", 0.9),
+  ];
+  const whisperOnly = Array.from({ length: 30 }, (_, index) =>
+    word(`mellemord${index}`, 1.2 + index * 0.2),
+  );
+  const questionStart = 8;
+  const aligned = alignTranscriptToTimedWords(
+    "De får håndjern på. Hvad er de sigtet for?",
+    [
+      ...opening,
+      ...whisperOnly,
+      word("Hvad", questionStart),
+      word("er", questionStart + 0.3),
+      word("de", questionStart + 0.6),
+      word("sigtet", questionStart + 0.9),
+      word("for?", questionStart + 1.2),
+    ],
+  );
+
+  const question = timedWordsToSentences(aligned)[1];
+  assert.equal(question.text, "Hvad er de sigtet for?");
+  assert.equal(question.start, questionStart);
+});
+
+test("keeps a later repeated phrase on its global timeline position", () => {
+  const aligned = alignTranscriptToTimedWords(
+    "De får håndjern på. Senere får de håndjern på igen. Hvad er de sigtet for?",
+    [
+      word("De", 0),
+      word("får", 0.2),
+      word("håndjern", 0.4),
+      word("på.", 0.6),
+      word("Senere", 5),
+      word("får", 5.2),
+      word("de", 5.4),
+      word("håndjern", 5.6),
+      word("på", 5.8),
+      word("igen.", 6),
+      word("Hvad", 8),
+      word("er", 8.2),
+      word("de", 8.4),
+      word("sigtet", 8.6),
+      word("for?", 8.8),
+    ],
+  );
+
+  assert.equal(timedWordsToSentences(aligned)[2].start, 8);
+});
+
+test("keeps GPT text and distributes it when no reliable anchors exist", () => {
+  const timingWords = [
+    word("Hvad", 4),
+    word("er", 4.2),
+    word("der", 4.4),
+    word("sket?", 4.6),
+  ];
+  const aligned = alignTranscriptToTimedWords(
+    "Completely unrelated generated transcript content.",
+    timingWords,
+  );
+
+  const sentences = timedWordsToSentences(aligned);
+  assert.equal(
+    sentences[0].text,
+    "Completely unrelated generated transcript content.",
+  );
+  assert.equal(sentences[0].start, 4);
+  assert.equal(sentences[0].end, 4.85);
+});
+
+test("attaches an uncertain sentence when anchors leave too little time", () => {
+  const aligned = alignTranscriptToTimedWords(
+    "Han går hjem. Denne sætning findes ikke. Hvad sker der?",
+    [
+      word("Han", 0),
+      word("går", 0.3),
+      word("hjem.", 0.6),
+      word("Hvad", 1),
+      word("sker", 1.3),
+      word("der?", 1.6),
+    ],
+  );
+
+  assert.deepEqual(timedWordsToSentences(aligned), [
+    {
+      text: "Han går hjem. Denne sætning findes ikke.",
+      start: 0,
+      end: 0.85,
+    },
+    { text: "Hvad sker der?", start: 1, end: 1.85 },
+  ]);
+});
+
+test("distributes an uncertain interval according to sentence length", () => {
+  const aligned = alignTranscriptToTimedWords(
+    "Han går hjem. Kort besked. Denne betydeligt længere sætning har mange flere ord. Hvad sker der?",
+    [
+      word("Han", 0),
+      word("går", 0.3),
+      word("hjem.", 0.6),
+      word("Hvad", 10),
+      word("sker", 10.3),
+      word("der?", 10.6),
+    ],
+  );
+  const sentences = timedWordsToSentences(aligned);
+  const shortDuration = sentences[1].end - sentences[1].start;
+  const longDuration = sentences[2].end - sentences[2].start;
+
+  assert.equal(sentences[1].text, "Kort besked.");
+  assert.equal(
+    sentences[2].text,
+    "Denne betydeligt længere sætning har mange flere ord.",
+  );
+  assert.ok(longDuration > shortDuration);
+  assert.equal(sentences[1].start, 0.85);
+  assert.equal(sentences[2].end, 10);
+});

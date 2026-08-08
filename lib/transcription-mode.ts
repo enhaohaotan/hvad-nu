@@ -4,7 +4,7 @@ export const TRANSCRIPTION_MODES = {
     badge: "Anbefalet",
     description:
       "gpt-transcribe skriver teksten, mens whisper-1 leverer tidskoder. Bedre nøjagtighed og fremhævning under afspilning.",
-    modelKey: "gpt-transcribe+whisper-1",
+    modelKey: "gpt-transcribe+whisper-1:alignment-v3",
     pricePerMinuteUsd: 0.0105,
     hasTimings: true,
   },

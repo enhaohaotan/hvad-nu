@@ -69,6 +69,9 @@ export function HvadSagdeDe() {
   const [playerError, setPlayerError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
+  const hasCompletedSeekRef = useRef(false);
+  const seekFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyFeedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -95,6 +98,7 @@ export function HvadSagdeDe() {
     return () => {
       cancelAnimationFrame(frame);
       if (copyFeedbackRef.current) clearTimeout(copyFeedbackRef.current);
+      if (seekFallbackRef.current) clearTimeout(seekFallbackRef.current);
     };
   }, []);
 
@@ -455,18 +459,21 @@ export function HvadSagdeDe() {
     const audio = audioRef.current;
     if (!audio) return;
     const limit = Number.isFinite(audio.duration) ? audio.duration : 0;
-    audio.currentTime = Math.min(
+    const target = Math.min(
       Math.max(audio.currentTime + seconds, 0),
       limit,
     );
+    beginPendingSeek(target);
+    audio.currentTime = target;
   }
 
   async function seekToSentence(seconds: number) {
     const audio = audioRef.current;
     if (!audio || !isPlayerOpen) return;
     const limit = Number.isFinite(audio.duration) ? audio.duration : seconds;
-    audio.currentTime = Math.min(Math.max(seconds, 0), limit);
-    setCurrentTime(audio.currentTime);
+    const target = Math.min(Math.max(seconds, 0), limit);
+    beginPendingSeek(target);
+    audio.currentTime = target;
     setPlayerError("");
     try {
       await audio.play();
@@ -477,12 +484,14 @@ export function HvadSagdeDe() {
 
   function closePlayer() {
     audioRef.current?.pause();
+    clearPendingSeek();
     setIsPlayerOpen(false);
     setIsPlaying(false);
     setPlayerError("");
   }
 
   function resetPlayer() {
+    clearPendingSeek();
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -495,6 +504,51 @@ export function HvadSagdeDe() {
     setAudioDuration(0);
     setPlaybackRate(1);
     setPlayerError("");
+  }
+
+  function updatePlaybackTime(value: number) {
+    const pendingTarget = pendingSeekRef.current;
+    if (pendingTarget !== null) {
+      if (!hasCompletedSeekRef.current || value < pendingTarget) return;
+      clearPendingSeek();
+    }
+    setCurrentTime(value);
+  }
+
+  function finishPlaybackSeek(value: number) {
+    const pendingTarget = pendingSeekRef.current;
+    if (pendingTarget === null) {
+      setCurrentTime(value);
+      return;
+    }
+    hasCompletedSeekRef.current = true;
+    if (value >= pendingTarget) {
+      clearPendingSeek();
+      setCurrentTime(value);
+    } else {
+      setCurrentTime(pendingTarget);
+    }
+  }
+
+  function beginPendingSeek(target: number) {
+    clearPendingSeek();
+    pendingSeekRef.current = target;
+    hasCompletedSeekRef.current = false;
+    setCurrentTime(target);
+    seekFallbackRef.current = setTimeout(() => {
+      if (pendingSeekRef.current !== target) return;
+      pendingSeekRef.current = null;
+      hasCompletedSeekRef.current = false;
+      seekFallbackRef.current = null;
+      setCurrentTime(Math.max(audioRef.current?.currentTime ?? target, target));
+    }, 1500);
+  }
+
+  function clearPendingSeek() {
+    pendingSeekRef.current = null;
+    hasCompletedSeekRef.current = false;
+    if (seekFallbackRef.current) clearTimeout(seekFallbackRef.current);
+    seekFallbackRef.current = null;
   }
 
   async function copyTranscript() {
@@ -645,7 +699,8 @@ export function HvadSagdeDe() {
         playbackRate={playbackRate}
         error={playerError}
         onDurationChange={setAudioDuration}
-        onTimeChange={setCurrentTime}
+        onTimeChange={updatePlaybackTime}
+        onSeekComplete={finishPlaybackSeek}
         onPlayingChange={setIsPlaying}
         onRateChange={setPlaybackRate}
         onReady={() => setPlayerError("")}

@@ -17,6 +17,7 @@ export function AudioPlayer({
   error,
   onDurationChange,
   onTimeChange,
+  onSeekComplete,
   onPlayingChange,
   onRateChange,
   onReady,
@@ -35,6 +36,7 @@ export function AudioPlayer({
   error: string;
   onDurationChange: (value: number) => void;
   onTimeChange: (value: number) => void;
+  onSeekComplete?: (value: number) => void;
   onPlayingChange: (value: boolean) => void;
   onRateChange: (value: number) => void;
   onReady: () => void;
@@ -110,6 +112,9 @@ export function AudioPlayer({
             onDurationChange(event.currentTarget.duration)
           }
           onTimeUpdate={(event) => onTimeChange(event.currentTarget.currentTime)}
+          onSeeked={(event) =>
+            onSeekComplete?.(event.currentTarget.currentTime)
+          }
           onPlay={() => onPlayingChange(true)}
           onPause={() => onPlayingChange(false)}
           onEnded={() => onPlayingChange(false)}
