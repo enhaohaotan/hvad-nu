@@ -547,6 +547,7 @@ export function DemoPage() {
                 availableTranslationLanguages={
                   Object.keys(presetTranslations) as TranslationLanguage[]
                 }
+                hasStickyTopBanner
                 onCopy={() => void copyTranscript()}
                 onDownload={downloadTranscript}
                 onSeekTo={(seconds) => void seekToSentence(seconds)}

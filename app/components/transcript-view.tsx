@@ -35,6 +35,7 @@ export function TranscriptView({
   isCopied,
   presetTranslations,
   availableTranslationLanguages,
+  hasStickyTopBanner = false,
   onCopy,
   onDownload,
   onSeekTo,
@@ -49,6 +50,7 @@ export function TranscriptView({
   isCopied: boolean;
   presetTranslations?: Partial<Record<TranslationLanguage, string[]>>;
   availableTranslationLanguages?: TranslationLanguage[];
+  hasStickyTopBanner?: boolean;
   onCopy: () => void;
   onDownload: () => void;
   onSeekTo: (seconds: number) => void;
@@ -219,7 +221,11 @@ export function TranscriptView({
       </div>
 
       {phase === "done" && (
-        <div className="sticky top-3 z-30 ml-auto mt-4 w-fit md:-mt-[60px] md:mb-6">
+        <div
+          className={`sticky z-30 ml-auto mt-4 w-fit md:-mt-[60px] md:mb-6 ${
+            hasStickyTopBanner ? "top-14" : "top-3"
+          }`}
+        >
           <div
             className="flex h-10 items-center border border-[#29231b]/35 bg-[#f7f2e8]/95 shadow-[0_7px_20px_rgba(41,35,27,0.14)]"
             role="group"
