@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveDrEpisode } from "@/lib/dr";
 import { MAX_CHUNK_BYTES, splitMp3 } from "@/lib/mp3";
+import { mergeTranscriptParts } from "@/lib/transcript-text";
 
 export const dynamic = "force-dynamic";
 // Vercel Hobby with Fluid Compute supports up to five minutes per invocation.
@@ -132,7 +133,7 @@ async function runTranscription({
       },
     });
 
-    completed = joinTranscript(completed, result);
+    completed = mergeTranscriptParts(completed, result);
     context = completed.slice(-500);
     emitProgress(
       emit,
@@ -313,12 +314,6 @@ function emitProgress(
   progress: number,
 ) {
   emit({ type: "companion.progress", phase, message, progress });
-}
-
-function joinTranscript(left: string, right: string): string {
-  if (!left) return right.trimStart();
-  if (!right) return left;
-  return `${left.trimEnd()}\n\n${right.trimStart()}`;
 }
 
 function errorResponse(message: string, status: number) {

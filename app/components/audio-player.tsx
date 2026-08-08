@@ -1,6 +1,10 @@
-import type { RefObject } from "react";
+"use client";
+
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { DrEpisode } from "@/lib/dr";
 import { formatPlaybackTime } from "@/lib/episode-format";
+
+const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 export function AudioPlayer({
   audioRef,
@@ -39,6 +43,58 @@ export function AudioPlayer({
   onToggle: () => void;
   onSeek: (seconds: number) => void;
 }) {
+  const [isRateMenuOpen, setIsRateMenuOpen] = useState(false);
+  const ratePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (isInteractiveTarget(event.target)) return;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        onToggle();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        onSeek(-5);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        onSeek(5);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onSeek, onToggle]);
+
+  useEffect(() => {
+    if (!isRateMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!ratePickerRef.current?.contains(event.target as Node)) {
+        setIsRateMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsRateMenuOpen(false);
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isRateMenuOpen]);
+
+  function selectRate(rate: number) {
+    if (audioRef.current) audioRef.current.playbackRate = rate;
+    onRateChange(rate);
+    setIsRateMenuOpen(false);
+  }
+
   return (
     <>
       {episode && (
@@ -82,7 +138,10 @@ export function AudioPlayer({
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  setIsRateMenuOpen(false);
+                  onClose();
+                }}
                 className="shrink-0 cursor-pointer text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d8d0c4] underline decoration-current/40 underline-offset-4 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 Luk
@@ -92,7 +151,10 @@ export function AudioPlayer({
             <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={onToggle}
+                onClick={(event) => {
+                  if (event.detail > 0) event.currentTarget.blur();
+                  onToggle();
+                }}
                 aria-label={isPlaying ? "Pause" : "Afspil"}
                 className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center bg-[#9f211e] text-sm transition hover:bg-[#bd2925] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
@@ -132,25 +194,51 @@ export function AudioPlayer({
                 aria-label="Spol i episoden"
                 className="h-1 min-w-[140px] flex-1 accent-[#9f211e] disabled:opacity-40"
               />
-              <label htmlFor="playback-rate" className="sr-only">
-                Afspilningshastighed
-              </label>
-              <select
-                id="playback-rate"
-                value={playbackRate}
-                onChange={(event) => {
-                  const nextRate = Number(event.target.value);
-                  if (audioRef.current) audioRef.current.playbackRate = nextRate;
-                  onRateChange(nextRate);
-                }}
-                className="h-10 cursor-pointer border border-[#f3eddf]/35 bg-[#1d1915] px-2 text-[10px] font-semibold text-[#f3eddf] outline-none"
-              >
-                {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
-                  <option key={rate} value={rate}>
-                    {rate.toLocaleString("da-DK")}×
-                  </option>
-                ))}
-              </select>
+              <div ref={ratePickerRef} className="relative">
+                <button
+                  type="button"
+                  aria-label={`Afspilningshastighed: ${formatRate(playbackRate)}`}
+                  aria-haspopup="menu"
+                  aria-expanded={isRateMenuOpen}
+                  onClick={() => setIsRateMenuOpen((open) => !open)}
+                  className="flex h-10 min-w-[70px] items-center justify-between gap-2 border border-[#f3eddf]/35 bg-[#29231f] px-3 text-[10px] font-semibold text-[#f3eddf] transition hover:border-[#f3eddf] hover:bg-[#36302a] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                >
+                  <span>{formatRate(playbackRate)}</span>
+                  <span
+                    aria-hidden="true"
+                    className={`text-[8px] transition-transform ${isRateMenuOpen ? "rotate-180" : ""}`}
+                  >
+                    ▼
+                  </span>
+                </button>
+                {isRateMenuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Afspilningshastighed"
+                    className="absolute bottom-[calc(100%+8px)] right-0 z-10 min-w-[96px] border border-[#f3eddf]/30 bg-[#29231f] p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.35)]"
+                  >
+                    {PLAYBACK_RATES.map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={playbackRate === rate}
+                        onClick={() => selectRate(rate)}
+                        className={`flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/30 ${
+                          playbackRate === rate
+                            ? "bg-[#9f211e] text-white"
+                            : "text-[#f3eddf] hover:bg-white/10"
+                        }`}
+                      >
+                        <span>{formatRate(rate)}</span>
+                        {playbackRate === rate && (
+                          <span aria-hidden="true">✓</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             {error && (
               <p className="mt-2 text-[10px] text-[#f0aaa5]" role="alert">
@@ -161,5 +249,20 @@ export function AudioPlayer({
         </aside>
       )}
     </>
+  );
+}
+
+function formatRate(rate: number): string {
+  return `${rate.toLocaleString("da-DK")}×`;
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(
+      target.closest(
+        "button, a, input, select, textarea, summary, [contenteditable='true']",
+      ),
+    )
   );
 }

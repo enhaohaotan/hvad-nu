@@ -40,7 +40,10 @@ export function EpisodePreview({
           </p>
           <button
             type="button"
-            onClick={onPlay}
+            onClick={(event) => {
+              if (event.detail > 0) event.currentTarget.blur();
+              onPlay();
+            }}
             className="cursor-pointer border border-[#29231b]/45 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#403a32] transition hover:border-[#9f211e] hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/20"
           >
             <span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>{" "}

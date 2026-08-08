@@ -18,12 +18,12 @@ const DR_DISCOVERY_LINKS = [
     href: "https://www.dr.dk/lyd/special-radio/genstart-2642056922000",
   },
   {
-    label: "Brinkmanns briks",
-    href: "https://www.dr.dk/lyd/p1/brinkmanns-briks-2144855835000",
+    label: "Djævlen i detaljen",
+    href: "https://www.dr.dk/lyd/special-radio/djaevlen-i-detaljen-1865892085000",
   },
   {
-    label: "Klog på Sprog",
-    href: "https://www.dr.dk/lyd/p1/klog-paa-sprog-1624041693000",
+    label: "Kampen om historien",
+    href: "https://www.dr.dk/lyd/p1/kampen-om-historien-3166339029000",
   },
 ] as const;
 
