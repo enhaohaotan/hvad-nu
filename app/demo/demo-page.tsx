@@ -464,12 +464,18 @@ export function DemoPage() {
 
             {transcript && (
               <TranscriptView
+                key={episode?.audioUrl}
                 episodeTitle={episode?.episodeTitle}
                 transcript={transcript}
+                timedSentences={[]}
+                currentTime={currentTime}
+                isPlayerOpen={isPlayerOpen}
+                apiKey=""
                 phase={phase}
                 isCopied={isCopied}
                 onCopy={() => void copyTranscript()}
                 onDownload={downloadTranscript}
+                onSeekTo={() => {}}
               />
             )}
           </section>

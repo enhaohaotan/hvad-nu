@@ -70,3 +70,19 @@ test("ignores invalid browser cache data", () => {
   assert.deepEqual(parseTranscriptCache("ikke json"), []);
   assert.deepEqual(parseTranscriptCache(JSON.stringify([{ transcript: 4 }])), []);
 });
+
+test("keeps valid timed sentences and rejects malformed timing data", () => {
+  const valid = {
+    ...entry(1),
+    timedSentences: [{ text: "Hej.", start: 0.2, end: 0.8 }],
+  };
+  assert.deepEqual(parseTranscriptCache(JSON.stringify([valid])), [valid]);
+  assert.deepEqual(
+    parseTranscriptCache(
+      JSON.stringify([
+        { ...valid, timedSentences: [{ text: "Hej.", start: 1, end: 0 }] },
+      ]),
+    ),
+    [],
+  );
+});

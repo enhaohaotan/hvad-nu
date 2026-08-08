@@ -1,9 +1,12 @@
+import type { TimedSentence } from "@/lib/timed-transcript";
+
 export const MAX_CACHED_TRANSCRIPTS = 10;
 
 export type TranscriptCacheEntry = {
   audioUrl: string;
   model: string;
   transcript: string;
+  timedSentences?: TimedSentence[];
   cachedAt: number;
   firstGeneratedAt?: number;
   isRegenerated?: boolean;
@@ -27,6 +30,9 @@ export function parseTranscriptCache(value: string | null): TranscriptCacheEntry
       typeof entry.audioUrl === "string" &&
       typeof entry.model === "string" &&
       typeof entry.transcript === "string" &&
+      (entry.timedSentences === undefined ||
+        (Array.isArray(entry.timedSentences) &&
+          entry.timedSentences.every(isTimedSentence))) &&
       typeof entry.cachedAt === "number" &&
       (entry.firstGeneratedAt === undefined || typeof entry.firstGeneratedAt === "number") &&
       (entry.isRegenerated === undefined || typeof entry.isRegenerated === "boolean") &&
@@ -39,6 +45,19 @@ export function parseTranscriptCache(value: string | null): TranscriptCacheEntry
   } catch {
     return [];
   }
+}
+
+function isTimedSentence(value: unknown): value is TimedSentence {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as TimedSentence).text === "string" &&
+    typeof (value as TimedSentence).start === "number" &&
+    Number.isFinite((value as TimedSentence).start) &&
+    typeof (value as TimedSentence).end === "number" &&
+    Number.isFinite((value as TimedSentence).end) &&
+    (value as TimedSentence).end >= (value as TimedSentence).start
+  );
 }
 
 export function findCachedTranscript(

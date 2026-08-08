@@ -58,7 +58,7 @@ export function ApiKeyPanel({
         </summary>
         <div className="mt-2 overflow-hidden border border-[#29231b]/20">
           <p className="px-4 py-2 text-[10px] text-[#70695f]">
-            Model: gpt-transcribe · 0,0045 USD/min.
+            Model: whisper-1 · 0,006 USD/min.
           </p>
           <table className="w-full table-fixed text-left text-xs text-[#575147]">
             <caption className="sr-only">
@@ -77,15 +77,15 @@ export function ApiKeyPanel({
             <tbody className="divide-y divide-[#29231b]/10">
               <tr>
                 <td className="px-4 py-2">20 min.</td>
-                <td className="px-4 py-2">ca. 0,59 kr.</td>
+                <td className="px-4 py-2">ca. 0,79 kr.</td>
               </tr>
               <tr>
                 <td className="px-4 py-2">40 min.</td>
-                <td className="px-4 py-2">ca. 1,18 kr.</td>
+                <td className="px-4 py-2">ca. 1,58 kr.</td>
               </tr>
               <tr>
                 <td className="px-4 py-2">60 min.</td>
-                <td className="px-4 py-2">ca. 1,77 kr.</td>
+                <td className="px-4 py-2">ca. 2,37 kr.</td>
               </tr>
             </tbody>
           </table>

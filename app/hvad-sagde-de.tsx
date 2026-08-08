@@ -7,6 +7,7 @@ import { StatusPanel } from "./components/status-panel";
 import { TranscriptView } from "./components/transcript-view";
 import { TranscriptionSetup } from "./components/transcription-setup";
 import type { DrEpisode } from "@/lib/dr";
+import type { TimedSentence } from "@/lib/timed-transcript";
 import {
   addCachedTranscript,
   findCachedTranscript,
@@ -23,7 +24,7 @@ import {
 // Keep the legacy keys so existing visitors retain their API key and transcripts.
 const API_KEY_STORAGE = "danish-listening-companion.openai-api-key";
 const TRANSCRIPT_CACHE_STORAGE = "danish-listening-companion.transcripts.v1";
-const TRANSCRIPTION_MODEL = "gpt-transcribe";
+const TRANSCRIPTION_MODEL = "whisper-1";
 const GENSTART_REFERENCE_URL =
   "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/sort-mand-paa-plakaten-11802650176";
 
@@ -37,6 +38,7 @@ export function HvadSagdeDe() {
   const [errorDebug, setErrorDebug] = useState("");
   const [progress, setProgress] = useState(0);
   const [transcript, setTranscript] = useState("");
+  const [timedSentences, setTimedSentences] = useState<TimedSentence[]>([]);
   const [cachedEpisodes, setCachedEpisodes] = useState<TranscriptCacheEntry[]>(
     [],
   );
@@ -213,6 +215,7 @@ export function HvadSagdeDe() {
     } catch {
       setEpisode(null);
       setTranscript("");
+      setTimedSentences([]);
       setPhase("error");
       setMessage("Indsæt en gyldig URL til en DR LYD-episode.");
       setErrorDebug("");
@@ -225,6 +228,7 @@ export function HvadSagdeDe() {
     abortRef.current = controller;
     setEpisode(null);
     setTranscript("");
+    setTimedSentences([]);
     setMessage("");
     setErrorDebug("");
     setPhase("resolving");
@@ -245,10 +249,11 @@ export function HvadSagdeDe() {
       setEpisode(body.episode);
       const cachedTranscript =
         selectedCache?.audioUrl === body.episode.audioUrl
-          ? selectedCache.transcript
+          ? selectedCache
           : readCachedTranscript(body.episode.audioUrl);
       if (cachedTranscript) {
-        setTranscript(cachedTranscript);
+        setTranscript(cachedTranscript.transcript);
+        setTimedSentences(cachedTranscript.timedSentences ?? []);
         setPhase("done");
         setMessage(
           "Episoden er transskriberet før — den gemte tekst vises igen",
@@ -287,6 +292,7 @@ export function HvadSagdeDe() {
     const controller = new AbortController();
     abortRef.current = controller;
     setTranscript("");
+    setTimedSentences([]);
     setMessage("Downloader episoden fra DR LYD…");
     setErrorDebug("");
     setProgress(0);
@@ -294,7 +300,7 @@ export function HvadSagdeDe() {
     setIsCopied(false);
 
     try {
-      const finalText = await transcribeEpisode({
+      const result = await transcribeEpisode({
         url: episode.sourceUrl,
         apiKey: apiKey.trim(),
         signal: controller.signal,
@@ -304,9 +310,16 @@ export function HvadSagdeDe() {
           setProgress(event.progress);
         },
         onTranscript: setTranscript,
+        onTimedSentences: setTimedSentences,
       });
-      setTranscript(finalText);
-      const updatedCache = cacheTranscript(episode, finalText, true);
+      setTranscript(result.text);
+      setTimedSentences(result.sentences);
+      const updatedCache = cacheTranscript(
+        episode,
+        result.text,
+        result.sentences,
+        true,
+      );
       if (updatedCache) {
         const nextSourceUrl =
           updatedCache.find((entry) => entry.sourceUrl)?.sourceUrl ?? "";
@@ -339,6 +352,7 @@ export function HvadSagdeDe() {
     setUrl("");
     setEpisode(null);
     setTranscript("");
+    setTimedSentences([]);
     setPhase("idle");
     setMessage("");
     setErrorDebug("");
@@ -422,6 +436,21 @@ export function HvadSagdeDe() {
       Math.max(audio.currentTime + seconds, 0),
       limit,
     );
+  }
+
+  async function seekToSentence(seconds: number) {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const limit = Number.isFinite(audio.duration) ? audio.duration : seconds;
+    audio.currentTime = Math.min(Math.max(seconds, 0), limit);
+    setCurrentTime(audio.currentTime);
+    setIsPlayerOpen(true);
+    setPlayerError("");
+    try {
+      await audio.play();
+    } catch {
+      setPlayerError("Lyden kunne ikke afspilles.");
+    }
   }
 
   function closePlayer() {
@@ -551,12 +580,18 @@ export function HvadSagdeDe() {
 
           {transcript && (
             <TranscriptView
+              key={episode?.audioUrl}
               episodeTitle={episode?.episodeTitle}
               transcript={transcript}
+              timedSentences={timedSentences}
+              currentTime={currentTime}
+              isPlayerOpen={isPlayerOpen}
+              apiKey={apiKey.trim()}
               phase={phase}
               isCopied={isCopied}
               onCopy={() => void copyTranscript()}
               onDownload={downloadTranscript}
+              onSeekTo={(seconds) => void seekToSentence(seconds)}
             />
           )}
         </section>
@@ -599,23 +634,21 @@ export function HvadSagdeDe() {
   );
 }
 
-function readCachedTranscript(audioUrl: string): string {
+function readCachedTranscript(audioUrl: string): TranscriptCacheEntry | undefined {
   try {
     const entries = parseTranscriptCache(
       localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
     );
-    return (
-      findCachedTranscript(entries, audioUrl, TRANSCRIPTION_MODEL)?.transcript ??
-      ""
-    );
+    return findCachedTranscript(entries, audioUrl, TRANSCRIPTION_MODEL);
   } catch {
-    return "";
+    return undefined;
   }
 }
 
 function cacheTranscript(
   episode: DrEpisode,
   transcript: string,
+  timedSentences: TimedSentence[],
   createNewVersion = false,
 ): TranscriptCacheEntry[] | null {
   try {
@@ -633,6 +666,7 @@ function cacheTranscript(
         audioUrl: episode.audioUrl,
         model: TRANSCRIPTION_MODEL,
         transcript,
+        timedSentences,
         cachedAt: Date.now(),
         firstGeneratedAt: createNewVersion ? Date.now() : undefined,
         isRegenerated: createNewVersion && Boolean(previousVersion),

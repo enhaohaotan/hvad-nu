@@ -34,7 +34,7 @@ uses restrictive browser security headers.
 - `fast-xml-parser` for DR's RSS feeds
 - Native MP3 frame splitting
 - Server-Sent Events for progress and transcript streaming
-- OpenAI `gpt-transcribe`
+- OpenAI `whisper-1` with word timestamps
 
 ## Local development
 

@@ -1,60 +1,80 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { TimedSentence } from "@/lib/timed-transcript";
+import {
+  isTranslationLanguage,
+  TRANSLATION_LANGUAGES,
+  type TranslationLanguage,
+} from "@/lib/translation";
 import type { TranscriptionPhase } from "@/lib/transcription-client";
 
-const DUMMY_TRANSLATIONS = [
-  "This is a sample translation of the Danish sentence above.",
-  "Placeholder text is used here to preview the reading experience.",
-  "The real translation will appear on this line later.",
-] as const;
-
-const TRANSLATION_LANGUAGES = {
-  zh: { label: "中文", samples: DUMMY_TRANSLATIONS },
-  en: { label: "English", samples: DUMMY_TRANSLATIONS },
-  de: { label: "Deutsch", samples: DUMMY_TRANSLATIONS },
-  fr: { label: "Français", samples: DUMMY_TRANSLATIONS },
-  es: { label: "Español", samples: DUMMY_TRANSLATIONS },
-  it: { label: "Italiano", samples: DUMMY_TRANSLATIONS },
-  pt: { label: "Português", samples: DUMMY_TRANSLATIONS },
-  nl: { label: "Nederlands", samples: DUMMY_TRANSLATIONS },
-  sv: { label: "Svenska", samples: DUMMY_TRANSLATIONS },
-  no: { label: "Norsk", samples: DUMMY_TRANSLATIONS },
-  pl: { label: "Polski", samples: DUMMY_TRANSLATIONS },
-  uk: { label: "Українська", samples: DUMMY_TRANSLATIONS },
-  ru: { label: "Русский", samples: DUMMY_TRANSLATIONS },
-  tr: { label: "Türkçe", samples: DUMMY_TRANSLATIONS },
-  ja: { label: "日本語", samples: DUMMY_TRANSLATIONS },
-  ko: { label: "한국어", samples: DUMMY_TRANSLATIONS },
-  ar: { label: "العربية", samples: DUMMY_TRANSLATIONS },
-  hi: { label: "हिन्दी", samples: DUMMY_TRANSLATIONS },
-} as const;
-
-type TranslationLanguage = keyof typeof TRANSLATION_LANGUAGES;
 const TRANSLATION_LANGUAGE_STORAGE_KEY = "hvad-sagde-de:translation-language";
+const TRANSLATION_CACHE_STORAGE_KEY = "hvad-sagde-de:translations:v1";
+
+type DisplaySentence = {
+  text: string;
+  start?: number;
+  end?: number;
+};
+
+type TranslationCacheEntry = {
+  key: string;
+  translations: string[];
+  cachedAt: number;
+};
 
 export function TranscriptView({
   episodeTitle,
   transcript,
+  timedSentences,
+  currentTime,
+  isPlayerOpen,
+  apiKey,
   phase,
   isCopied,
   onCopy,
   onDownload,
+  onSeekTo,
 }: {
   episodeTitle?: string;
   transcript: string;
+  timedSentences: TimedSentence[];
+  currentTime: number;
+  isPlayerOpen: boolean;
+  apiKey: string;
   phase: TranscriptionPhase;
   isCopied: boolean;
   onCopy: () => void;
   onDownload: () => void;
+  onSeekTo: (seconds: number) => void;
 }) {
   const [showTranslation, setShowTranslation] = useState(false);
   const [translationLanguage, setTranslationLanguage] =
     useState<TranslationLanguage>(getInitialTranslationLanguage);
+  const [translations, setTranslations] = useState<
+    Partial<Record<TranslationLanguage, string[]>>
+  >({});
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState("");
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
-  const sentences = useMemo(() => splitSentences(transcript), [transcript]);
-  const selectedLanguage = TRANSLATION_LANGUAGES[translationLanguage];
+  const translationAbortRef = useRef<AbortController | null>(null);
+  const displaySentences = useMemo<DisplaySentence[]>(
+    () =>
+      timedSentences.length > 0
+        ? timedSentences
+        : splitSentences(transcript).map((text) => ({ text })),
+    [timedSentences, transcript],
+  );
+  const activeSentenceIndex = useMemo(() => {
+    if (!isPlayerOpen || timedSentences.length === 0) return -1;
+    for (let index = timedSentences.length - 1; index >= 0; index--) {
+      if (currentTime >= timedSentences[index].start) return index;
+    }
+    return -1;
+  }, [currentTime, isPlayerOpen, timedSentences]);
+  const selectedTranslations = translations[translationLanguage];
 
   useEffect(() => {
     if (!isActionsMenuOpen) return;
@@ -66,9 +86,7 @@ export function TranscriptView({
     }
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsActionsMenuOpen(false);
-      }
+      if (event.key === "Escape") setIsActionsMenuOpen(false);
     }
 
     window.addEventListener("pointerdown", handlePointerDown);
@@ -79,24 +97,111 @@ export function TranscriptView({
     };
   }, [isActionsMenuOpen]);
 
+  useEffect(
+    () => () => translationAbortRef.current?.abort(),
+    [],
+  );
+
+  async function ensureTranslation(language: TranslationLanguage) {
+    if (translations[language]?.length === displaySentences.length) return;
+    setTranslationError("");
+    if (!apiKey) {
+      setTranslationError("Indtast din OpenAI API-nøgle for at oversætte.");
+      return;
+    }
+
+    const cacheKey = makeTranslationCacheKey(transcript, language);
+    const cached = readTranslationCache(cacheKey, displaySentences.length);
+    if (cached) {
+      setTranslations((current) => ({ ...current, [language]: cached }));
+      return;
+    }
+
+    translationAbortRef.current?.abort();
+    const controller = new AbortController();
+    translationAbortRef.current = controller;
+    setIsTranslating(true);
+    try {
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetLanguage: language,
+          sentences: displaySentences.map((sentence, id) => ({
+            id,
+            text: sentence.text,
+          })),
+        }),
+        signal: controller.signal,
+      });
+      const body = (await response.json().catch(() => null)) as {
+        translations?: unknown;
+        error?: string;
+      } | null;
+      if (!response.ok || !Array.isArray(body?.translations)) {
+        throw new Error(body?.error || "Transskriptionen kunne ikke oversættes.");
+      }
+      const result = body.translations.filter(
+        (value): value is string => typeof value === "string" && Boolean(value),
+      );
+      if (result.length !== displaySentences.length) {
+        throw new Error("Oversættelsen manglede en eller flere sætninger.");
+      }
+      setTranslations((current) => ({ ...current, [language]: result }));
+      writeTranslationCache(cacheKey, result);
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setTranslationError(
+          error instanceof Error
+            ? error.message
+            : "Transskriptionen kunne ikke oversættes.",
+        );
+      }
+    } finally {
+      if (translationAbortRef.current === controller) {
+        translationAbortRef.current = null;
+        setIsTranslating(false);
+      }
+    }
+  }
+
+  function toggleTranslation() {
+    const nextVisible = !showTranslation;
+    setShowTranslation(nextVisible);
+    if (nextVisible) void ensureTranslation(translationLanguage);
+  }
+
+  function selectLanguage(language: TranslationLanguage) {
+    setTranslationLanguage(language);
+    try {
+      window.localStorage.setItem(TRANSLATION_LANGUAGE_STORAGE_KEY, language);
+    } catch {
+      // Keep the selection for this session.
+    }
+    setIsActionsMenuOpen(false);
+    if (showTranslation) void ensureTranslation(language);
+  }
+
   return (
     <section
       className="mt-12 border-t-4 border-[#76866f] pt-7 sm:mt-16 sm:pt-9"
       aria-labelledby="transcript-title"
     >
       <div className="border-b border-[#29231b]/40 pb-6 md:pr-[220px]">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9f211e]">
-            Transskriptionen
-          </p>
-          <h2
-            id="transcript-title"
-            className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl"
-          >
-            {episodeTitle}
-          </h2>
-        </div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9f211e]">
+          Transskriptionen
+        </p>
+        <h2
+          id="transcript-title"
+          className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl"
+        >
+          {episodeTitle}
+        </h2>
       </div>
+
       {phase === "done" && (
         <div className="sticky top-3 z-30 ml-auto mt-4 w-fit md:-mt-[60px] md:mb-6">
           <div
@@ -108,11 +213,11 @@ export function TranscriptView({
               type="button"
               role="switch"
               aria-checked={showTranslation}
-              onClick={() => setShowTranslation((visible) => !visible)}
+              onClick={toggleTranslation}
               className="group flex h-full shrink-0 items-center gap-3 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#29231b] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/20"
               aria-label={`${showTranslation ? "Skjul" : "Vis"} oversættelse`}
             >
-              <span>Oversæt</span>
+              <span>{isTranslating ? "Oversætter…" : "Oversæt"}</span>
               <span
                 aria-hidden="true"
                 className={`flex h-[18px] w-8 items-center border p-0.5 transition-colors ${
@@ -174,26 +279,15 @@ export function TranscriptView({
                   </p>
                   <div className="editorial-scrollbar -mb-1.5 -mr-1.5 max-h-56 overflow-y-auto">
                     {Object.entries(TRANSLATION_LANGUAGES).map(
-                      ([language, { label }]) => (
+                      ([language, label]) => (
                         <button
                           key={language}
                           type="button"
                           role="menuitemradio"
                           aria-checked={translationLanguage === language}
-                          onClick={() => {
-                            const nextLanguage =
-                              language as TranslationLanguage;
-                            setTranslationLanguage(nextLanguage);
-                            try {
-                              window.localStorage.setItem(
-                                TRANSLATION_LANGUAGE_STORAGE_KEY,
-                                nextLanguage,
-                              );
-                            } catch {
-                              // Keep the selection for this session.
-                            }
-                            setIsActionsMenuOpen(false);
-                          }}
+                          onClick={() =>
+                            selectLanguage(language as TranslationLanguage)
+                          }
                           className={`flex w-full items-center justify-between gap-5 px-3 py-2 text-left text-[10px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/20 ${
                             translationLanguage === language
                               ? "bg-[#29231b] text-[#f8f2e6]"
@@ -212,35 +306,67 @@ export function TranscriptView({
               )}
             </div>
           </div>
+          {translationError && (
+            <p
+              role="alert"
+              className="mt-1.5 max-w-72 border border-[#9f211e]/30 bg-[#f7f2e8]/95 px-2.5 py-2 text-[10px] leading-4 text-[#9f211e] shadow-sm"
+            >
+              {translationError}
+            </p>
+          )}
         </div>
       )}
+
       <article
         aria-live="polite"
         className="editorial-copy mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] leading-[1.8] text-[#332e27] sm:py-12 sm:text-[16px]"
       >
-        {showTranslation ? (
-          <span>
-            {sentences.map((sentence, index) => (
-              <span key={`${index}:${sentence.slice(0, 32)}`}>
-                <ruby className="[ruby-align:start] [ruby-position:under]">
-                  {sentence}
-                  <rt
-                  lang={translationLanguage}
-                    className="font-sans text-[10px] font-normal leading-tight text-[#65705f] sm:text-[11px]"
-                  >
-                    {
-                      selectedLanguage.samples[
-                        index % selectedLanguage.samples.length
-                      ]
-                    }
-                  </rt>
-                </ruby>{" "}
-              </span>
-            ))}
-          </span>
-        ) : (
-          transcript
-        )}
+        {displaySentences.map((sentence, index) => {
+          const isTimed = sentence.start !== undefined;
+          const isActive = index === activeSentenceIndex;
+          const content = showTranslation && selectedTranslations?.[index] ? (
+            <ruby className="[ruby-align:start] [ruby-position:under]">
+              {sentence.text}
+              <rt
+                lang={translationLanguage}
+                className="font-sans text-[10px] font-normal leading-tight text-[#65705f] sm:text-[11px]"
+              >
+                {selectedTranslations[index]}
+              </rt>
+            </ruby>
+          ) : (
+            sentence.text
+          );
+
+          return isTimed ? (
+            <span
+              key={`${sentence.start}:${sentence.text.slice(0, 32)}`}
+              role="button"
+              tabIndex={0}
+              aria-current={isActive ? "true" : undefined}
+              onClick={() => onSeekTo(sentence.start ?? 0)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSeekTo(sentence.start ?? 0);
+                }
+              }}
+              title="Afspil fra denne sætning"
+              className={`cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
+                isActive
+                  ? "bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
+                  : "hover:bg-[#e7dfcf] [box-decoration-break:clone]"
+              }`}
+            >
+              {content}
+              {" "}
+            </span>
+          ) : (
+            <span key={`${index}:${sentence.text.slice(0, 32)}`}>
+              {content}{" "}
+            </span>
+          );
+        })}
         {phase === "transcribing" && (
           <span
             className="ml-1 inline-block h-5 w-0.5 animate-pulse bg-[#9f211e] align-middle"
@@ -268,21 +394,81 @@ function splitSentences(value: string): string[] {
   );
 }
 
-function isTranslationLanguage(value: string): value is TranslationLanguage {
-  return value in TRANSLATION_LANGUAGES;
-}
-
 function getInitialTranslationLanguage(): TranslationLanguage {
   if (typeof window === "undefined") return "en";
-
   try {
-    const storedLanguage = window.localStorage.getItem(
+    const stored = window.localStorage.getItem(
       TRANSLATION_LANGUAGE_STORAGE_KEY,
     );
-    return storedLanguage && isTranslationLanguage(storedLanguage)
-      ? storedLanguage
-      : "en";
+    return stored && isTranslationLanguage(stored) ? stored : "en";
   } catch {
     return "en";
+  }
+}
+
+function makeTranslationCacheKey(
+  transcript: string,
+  language: TranslationLanguage,
+): string {
+  let hash = 2166136261;
+  for (let index = 0; index < transcript.length; index++) {
+    hash ^= transcript.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${language}:${transcript.length}:${(hash >>> 0).toString(16)}`;
+}
+
+function readTranslationCache(
+  key: string,
+  expectedLength: number,
+): string[] | undefined {
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(TRANSLATION_CACHE_STORAGE_KEY) ?? "[]",
+    ) as unknown;
+    if (!Array.isArray(parsed)) return undefined;
+    const match = parsed.find(
+      (entry): entry is TranslationCacheEntry =>
+        typeof entry === "object" &&
+        entry !== null &&
+        (entry as TranslationCacheEntry).key === key &&
+        Array.isArray((entry as TranslationCacheEntry).translations) &&
+        (entry as TranslationCacheEntry).translations.every(
+          (value) => typeof value === "string",
+        ) &&
+        typeof (entry as TranslationCacheEntry).cachedAt === "number",
+    );
+    return match?.translations.length === expectedLength
+      ? match.translations
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeTranslationCache(key: string, translations: string[]) {
+  try {
+    const raw = JSON.parse(
+      window.localStorage.getItem(TRANSLATION_CACHE_STORAGE_KEY) ?? "[]",
+    ) as unknown;
+    const current = Array.isArray(raw) ? raw : [];
+    const next: TranslationCacheEntry[] = [
+      { key, translations, cachedAt: Date.now() },
+      ...current.filter(
+        (entry): entry is TranslationCacheEntry =>
+          typeof entry === "object" &&
+          entry !== null &&
+          (entry as TranslationCacheEntry).key !== key &&
+          typeof (entry as TranslationCacheEntry).key === "string" &&
+          Array.isArray((entry as TranslationCacheEntry).translations) &&
+          typeof (entry as TranslationCacheEntry).cachedAt === "number",
+      ),
+    ].slice(0, 12);
+    window.localStorage.setItem(
+      TRANSLATION_CACHE_STORAGE_KEY,
+      JSON.stringify(next),
+    );
+  } catch {
+    // Translation still remains in memory when storage is unavailable.
   }
 }

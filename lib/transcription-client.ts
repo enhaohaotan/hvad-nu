@@ -1,3 +1,5 @@
+import type { TimedSentence } from "@/lib/timed-transcript";
+
 export type TranscriptionPhase =
   | "idle"
   | "resolving"
@@ -14,19 +16,26 @@ type ProgressEvent = {
   progress: number;
 };
 
+export type TranscriptionResult = {
+  text: string;
+  sentences: TimedSentence[];
+};
+
 export async function transcribeEpisode({
   url,
   apiKey,
   signal,
   onProgress,
   onTranscript,
+  onTimedSentences,
 }: {
   url: string;
   apiKey: string;
   signal: AbortSignal;
   onProgress: (event: ProgressEvent) => void;
   onTranscript: (value: string) => void;
-}): Promise<string> {
+  onTimedSentences: (value: TimedSentence[]) => void;
+}): Promise<TranscriptionResult> {
   const response = await fetch("/api/transcribe", {
     method: "POST",
     headers: {
@@ -49,6 +58,7 @@ export async function transcribeEpisode({
   let buffer = "";
   let accumulated = "";
   let finalText = "";
+  let finalSentences: TimedSentence[] = [];
   let streamError = "";
   let streamErrorDebug = "";
 
@@ -69,10 +79,19 @@ export async function transcribeEpisode({
         debug?: string;
         phase?: ProgressEvent["phase"];
         progress?: number;
+        sentences?: unknown;
       };
       if (event.type === "transcript.text.delta" && event.delta) {
         accumulated += event.delta;
         onTranscript(accumulated);
+      } else if (event.type === "companion.transcript" && event.text) {
+        accumulated = event.text;
+        onTranscript(accumulated);
+        const sentences = parseTimedSentences(event.sentences);
+        if (sentences.length > 0) {
+          finalSentences = sentences;
+          onTimedSentences(sentences);
+        }
       } else if (
         event.type === "companion.progress" &&
         event.phase &&
@@ -86,6 +105,11 @@ export async function transcribeEpisode({
       } else if (event.type === "companion.done" && event.text) {
         finalText = event.text;
         onTranscript(finalText);
+        const sentences = parseTimedSentences(event.sentences);
+        if (sentences.length > 0) {
+          finalSentences = sentences;
+          onTimedSentences(sentences);
+        }
       } else if (event.type === "companion.error") {
         streamError =
           event.message || "Episoden kunne ikke transskriberes.";
@@ -110,7 +134,25 @@ export async function transcribeEpisode({
     throw new TranscriptionRequestError(streamError, streamErrorDebug);
   }
 
-  return (finalText || accumulated).trim();
+  return {
+    text: (finalText || accumulated).trim(),
+    sentences: finalSentences,
+  };
+}
+
+function parseTimedSentences(value: unknown): TimedSentence[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (sentence): sentence is TimedSentence =>
+      typeof sentence === "object" &&
+      sentence !== null &&
+      typeof (sentence as TimedSentence).text === "string" &&
+      typeof (sentence as TimedSentence).start === "number" &&
+      Number.isFinite((sentence as TimedSentence).start) &&
+      typeof (sentence as TimedSentence).end === "number" &&
+      Number.isFinite((sentence as TimedSentence).end) &&
+      (sentence as TimedSentence).end >= (sentence as TimedSentence).start,
+  );
 }
 
 export function errorMessage(error: unknown): string {
