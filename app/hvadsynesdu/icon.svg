@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="10" fill="#0b4a47"/>
+  <g
+    fill="#f3eddf"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="12"
+    font-weight="900"
+    letter-spacing="-0.7"
+    text-anchor="end"
+  >
+    <text x="58" y="19">HVA’</text>
+    <text x="58" y="36.5">SYNES</text>
+    <text x="58" y="54">DU?</text>
+  </g>
+</svg>
