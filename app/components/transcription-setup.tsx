@@ -1,5 +1,6 @@
 import type { DrEpisode } from "@/lib/dr";
 import type { TranscriptionPhase } from "@/lib/transcription-client";
+import type { TranscriptionMode } from "@/lib/transcription-mode";
 import { ApiKeyPanel } from "./api-key-panel";
 import { EpisodePreview } from "./episode-preview";
 import { StepLabel } from "./step-label";
@@ -10,10 +11,12 @@ export function TranscriptionSetup({
   apiKey,
   isApiKeyInputVisible,
   isWorking,
+  transcriptionMode,
   isPlaying,
   onTogglePlayback,
   onApiKeyChange,
   onForgetApiKey,
+  onTranscriptionModeChange,
   onTranscribe,
 }: {
   episode: DrEpisode;
@@ -21,10 +24,12 @@ export function TranscriptionSetup({
   apiKey: string;
   isApiKeyInputVisible: boolean;
   isWorking: boolean;
+  transcriptionMode: TranscriptionMode;
   isPlaying: boolean;
   onTogglePlayback: () => void;
   onApiKeyChange: (value: string) => void;
   onForgetApiKey: () => void;
+  onTranscriptionModeChange: (mode: TranscriptionMode) => void;
   onTranscribe: () => void;
 }) {
   return (
@@ -43,8 +48,10 @@ export function TranscriptionSetup({
             apiKey={apiKey}
             isInputVisible={isApiKeyInputVisible}
             isWorking={isWorking}
+            transcriptionMode={transcriptionMode}
             onChange={onApiKeyChange}
             onForget={onForgetApiKey}
+            onTranscriptionModeChange={onTranscriptionModeChange}
           />
           <button
             type="button"

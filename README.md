@@ -34,7 +34,8 @@ uses restrictive browser security headers.
 - `fast-xml-parser` for DR's RSS feeds
 - Native MP3 frame splitting
 - Server-Sent Events for progress and transcript streaming
-- OpenAI `whisper-1` with word timestamps
+- Selectable OpenAI transcription modes: `gpt-transcribe`, `whisper-1`, or a
+  dual-model pipeline with GPT text aligned to Whisper word timestamps
 
 ## Local development
 

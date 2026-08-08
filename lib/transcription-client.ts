@@ -1,4 +1,5 @@
 import type { TimedSentence } from "@/lib/timed-transcript";
+import type { TranscriptionMode } from "@/lib/transcription-mode";
 
 export type TranscriptionPhase =
   | "idle"
@@ -24,6 +25,7 @@ export type TranscriptionResult = {
 export async function transcribeEpisode({
   url,
   apiKey,
+  mode,
   signal,
   onProgress,
   onTranscript,
@@ -31,6 +33,7 @@ export async function transcribeEpisode({
 }: {
   url: string;
   apiKey: string;
+  mode: TranscriptionMode;
   signal: AbortSignal;
   onProgress: (event: ProgressEvent) => void;
   onTranscript: (value: string) => void;
@@ -42,7 +45,7 @@ export async function transcribeEpisode({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, mode }),
     signal,
   });
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyTranscriptPunctuation,
+  alignTranscriptToTimedWords,
   mergeTimedWords,
   timedSentencesToText,
   timedWordsToSentences,
@@ -74,4 +75,32 @@ test("restores punctuation and casing from the full transcript", () => {
     { text: "Hvad sagde han?", start: 0, end: 0.85 },
     { text: "Det ved jeg ikke.", start: 1, end: 2.15 },
   ]);
+});
+
+test("uses accurate transcript text with a separate word timeline", () => {
+  const aligned = alignTranscriptToTimedWords(
+    "Andrew Tate bliver anholdt. Han nægter sig skyldig.",
+    [
+      word("Andrew", 0, 0.3),
+      word("Tate", 0.35, 0.6),
+      word("bliver", 0.7, 0.9),
+      word("arresteret", 1, 1.4),
+      word("Han", 1.8, 2),
+      word("nægter", 2.1, 2.4),
+      word("sig", 2.5, 2.6),
+      word("skyldig", 2.7, 3),
+    ],
+  );
+
+  assert.equal(
+    aligned.map((item) => item.word).join(" "),
+    "Andrew Tate bliver anholdt. Han nægter sig skyldig.",
+  );
+  assert.equal(aligned[0].start, 0);
+  assert.equal(aligned.at(-1)?.end, 3);
+  assert.ok(aligned.every((item) => item.end >= item.start));
+  assert.deepEqual(
+    timedWordsToSentences(aligned).map((sentence) => sentence.text),
+    ["Andrew Tate bliver anholdt.", "Han nægter sig skyldig."],
+  );
 });

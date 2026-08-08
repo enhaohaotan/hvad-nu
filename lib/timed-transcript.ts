@@ -75,6 +75,69 @@ export function applyTranscriptPunctuation(
   return result;
 }
 
+export function alignTranscriptToTimedWords(
+  transcript: string,
+  timingWords: TimedWord[],
+): TimedWord[] {
+  const transcriptTokens = transcript.match(/\S+/gu) ?? [];
+  if (transcriptTokens.length === 0 || timingWords.length === 0) return [];
+
+  const anchors: Array<{ transcriptIndex: number; timingIndex: number }> = [
+    { transcriptIndex: 0, timingIndex: 0 },
+  ];
+  let timingSearchStart = 0;
+  for (
+    let transcriptIndex = 0;
+    transcriptIndex < transcriptTokens.length;
+    transcriptIndex++
+  ) {
+    const normalizedToken = normalizeText(transcriptTokens[transcriptIndex]);
+    if (!normalizedToken) continue;
+    const searchEnd = Math.min(timingWords.length, timingSearchStart + 24);
+    for (let timingIndex = timingSearchStart; timingIndex < searchEnd; timingIndex++) {
+      if (normalizeWord(timingWords[timingIndex]) === normalizedToken) {
+        anchors.push({ transcriptIndex, timingIndex });
+        timingSearchStart = timingIndex + 1;
+        break;
+      }
+    }
+  }
+  anchors.push({
+    transcriptIndex: transcriptTokens.length,
+    timingIndex: timingWords.length,
+  });
+
+  const uniqueAnchors = anchors.filter(
+    (anchor, index) =>
+      index === 0 ||
+      anchor.transcriptIndex > anchors[index - 1].transcriptIndex,
+  );
+  let anchorIndex = 0;
+  return transcriptTokens.map((token, transcriptIndex) => {
+    while (
+      anchorIndex < uniqueAnchors.length - 2 &&
+      transcriptIndex >= uniqueAnchors[anchorIndex + 1].transcriptIndex
+    ) {
+      anchorIndex++;
+    }
+    const previous = uniqueAnchors[anchorIndex];
+    const next = uniqueAnchors[anchorIndex + 1];
+    const span = Math.max(1, next.transcriptIndex - previous.transcriptIndex);
+    const progress = (transcriptIndex - previous.transcriptIndex) / span;
+    const startPosition =
+      previous.timingIndex + progress * (next.timingIndex - previous.timingIndex);
+    const endProgress = (transcriptIndex + 1 - previous.transcriptIndex) / span;
+    const endPosition =
+      previous.timingIndex +
+      Math.min(1, endProgress) * (next.timingIndex - previous.timingIndex);
+    return {
+      word: token,
+      start: timeAtBoundary(timingWords, startPosition),
+      end: timeAtBoundary(timingWords, Math.max(startPosition, endPosition)),
+    };
+  });
+}
+
 export function timedWordsToSentences(words: TimedWord[]): TimedSentence[] {
   const sentences: TimedSentence[] = [];
   let sentenceWords: TimedWord[] = [];
@@ -124,4 +187,19 @@ function normalizeText(value: string): string {
   return value
     .toLocaleLowerCase("da")
     .replace(/[^\p{Letter}\p{Number}]+/gu, "");
+}
+
+function timeAtBoundary(words: TimedWord[], position: number): number {
+  if (position <= 0) return words[0].start;
+  if (position >= words.length) return words.at(-1)?.end ?? 0;
+
+  const lower = Math.floor(position);
+  const fraction = position - lower;
+  const lowerBoundary =
+    lower === 0
+      ? words[0].start
+      : (words[lower - 1].end + words[lower].start) / 2;
+  if (fraction === 0 || lower >= words.length - 1) return lowerBoundary;
+  const upperBoundary = (words[lower].end + words[lower + 1].start) / 2;
+  return lowerBoundary + (upperBoundary - lowerBoundary) * fraction;
 }

@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveDrEpisode } from "@/lib/dr";
 import { MAX_CHUNK_BYTES, splitMp3 } from "@/lib/mp3";
+import { mergeTranscriptParts } from "@/lib/transcript-text";
 import {
+  alignTranscriptToTimedWords,
   applyTranscriptPunctuation,
   mergeTimedWords,
   timedSentencesToText,
   timedWordsToSentences,
   type TimedWord,
 } from "@/lib/timed-transcript";
+import {
+  DEFAULT_TRANSCRIPTION_MODE,
+  isTranscriptionMode,
+  type TranscriptionMode,
+} from "@/lib/transcription-mode";
 
 export const dynamic = "force-dynamic";
 // Vercel Hobby with Fluid Compute supports up to five minutes per invocation.
@@ -28,9 +35,16 @@ export async function POST(request: NextRequest) {
   }
 
   let drUrl = "";
+  let mode: TranscriptionMode = DEFAULT_TRANSCRIPTION_MODE;
   try {
-    const body = (await request.json()) as { url?: unknown };
+    const body = (await request.json()) as { url?: unknown; mode?: unknown };
     drUrl = typeof body.url === "string" ? body.url : "";
+    if (body.mode !== undefined) {
+      if (typeof body.mode !== "string" || !isTranscriptionMode(body.mode)) {
+        return errorResponse("Vælg en gyldig transskriptionsmetode.", 400);
+      }
+      mode = body.mode;
+    }
   } catch {
     return errorResponse("Anmodningen om transskription kunne ikke læses.", 400);
   }
@@ -53,7 +67,7 @@ export async function POST(request: NextRequest) {
         if (!closed) controller.enqueue(encoder.encode(": keep-alive\n\n"));
       }, 15_000);
 
-      void runTranscription({ drUrl, apiKey, signal: request.signal, emit })
+      void runTranscription({ drUrl, apiKey, mode, signal: request.signal, emit })
         .catch((error) => {
           if (!request.signal.aborted) {
             emit({
@@ -89,11 +103,13 @@ export async function POST(request: NextRequest) {
 async function runTranscription({
   drUrl,
   apiKey,
+  mode,
   signal,
   emit,
 }: {
   drUrl: string;
   apiKey: string;
+  mode: TranscriptionMode;
   signal: AbortSignal;
   emit: (event: Record<string, unknown>) => void;
 }) {
@@ -117,6 +133,7 @@ async function runTranscription({
   const chunks = splitMp3(audio);
 
   let completedWords: TimedWord[] = [];
+  let completedText = "";
   let context = "";
   let chunkOffset = 0;
   for (let index = 0; index < chunks.length; index++) {
@@ -129,24 +146,55 @@ async function runTranscription({
       baseProgress,
     );
 
-    const result = await transcribeChunk({
-      chunk: chunk.blob,
-      index,
-      apiKey,
-      prompt: context,
-      signal,
-    });
-
-    const offsetWords = result.words.map((word) => ({
-      ...word,
-      start: word.start + chunkOffset,
-      end: word.end + chunkOffset,
-    }));
-    completedWords = mergeTimedWords(completedWords, offsetWords);
-    const sentences = timedWordsToSentences(completedWords);
-    const completed = timedSentencesToText(sentences);
-    context = completed.slice(-500);
-    emit({ type: "companion.transcript", text: completed, sentences });
+    if (mode === "gpt") {
+      const text = await transcribeGptChunk({
+        chunk: chunk.blob,
+        index,
+        apiKey,
+        prompt: context,
+        signal,
+      });
+      completedText = mergeTranscriptParts(completedText, text);
+      context = completedText.slice(-500);
+      emit({ type: "companion.transcript", text: completedText, sentences: [] });
+    } else {
+      const [gptText, whisperResult] = await Promise.all([
+        mode === "dual"
+          ? transcribeGptChunk({
+              chunk: chunk.blob,
+              index,
+              apiKey,
+              prompt: context,
+              signal,
+            })
+          : Promise.resolve(""),
+        transcribeWhisperChunk({
+          chunk: chunk.blob,
+          index,
+          apiKey,
+          prompt: context,
+          signal,
+        }),
+      ]);
+      const chunkWords =
+        mode === "dual"
+          ? alignTranscriptToTimedWords(gptText, whisperResult.words)
+          : whisperResult.words;
+      const offsetWords = chunkWords.map((word) => ({
+        ...word,
+        start: word.start + chunkOffset,
+        end: word.end + chunkOffset,
+      }));
+      completedWords = mergeTimedWords(completedWords, offsetWords);
+      const sentences = timedWordsToSentences(completedWords);
+      completedText = timedSentencesToText(sentences);
+      context = completedText.slice(-500);
+      emit({
+        type: "companion.transcript",
+        text: completedText,
+        sentences,
+      });
+    }
     chunkOffset += chunk.durationSeconds;
     emitProgress(
       emit,
@@ -156,10 +204,10 @@ async function runTranscription({
     );
   }
 
-  const sentences = timedWordsToSentences(completedWords);
+  const sentences = mode === "gpt" ? [] : timedWordsToSentences(completedWords);
   emit({
     type: "companion.done",
-    text: timedSentencesToText(sentences),
+    text: mode === "gpt" ? completedText : timedSentencesToText(sentences),
     sentences,
     progress: 100,
   });
@@ -238,7 +286,7 @@ async function downloadAudio(
   return new Blob(parts as BlobPart[], { type: "audio/mpeg" }).arrayBuffer();
 }
 
-async function transcribeChunk({
+async function transcribeWhisperChunk({
   chunk,
   index,
   apiKey,
@@ -299,6 +347,53 @@ async function transcribeChunk({
   }
   const text = typeof body.text === "string" ? body.text.trim() : "";
   return { text, words: applyTranscriptPunctuation(text, words) };
+}
+
+async function transcribeGptChunk({
+  chunk,
+  index,
+  apiKey,
+  prompt,
+  signal,
+}: {
+  chunk: Blob;
+  index: number;
+  apiKey: string;
+  prompt: string;
+  signal: AbortSignal;
+}): Promise<string> {
+  if (chunk.size > MAX_CHUNK_BYTES) {
+    throw new Error("En lyddel overskred sikkerhedsgrænsen på 24 MB.");
+  }
+
+  const form = new FormData();
+  form.set(
+    "file",
+    chunk,
+    `dr-episode-${String(index + 1).padStart(2, "0")}.mp3`,
+  );
+  form.set("model", "gpt-transcribe");
+  form.set("response_format", "json");
+  form.append("languages[]", "da");
+  if (prompt) form.set("prompt", prompt);
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    },
+    body: form,
+    signal,
+  });
+  if (!response.ok) {
+    throw await openAiError(response, index, "gpt-transcribe");
+  }
+  const body = (await response.json()) as { text?: unknown };
+  if (typeof body.text !== "string" || !body.text.trim()) {
+    throw new Error("OpenAI returnerede ingen tekst for denne lyddel.");
+  }
+  return body.text.trim();
 }
 
 function emitProgress(

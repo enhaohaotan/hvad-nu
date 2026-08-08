@@ -9,6 +9,12 @@ import { TranscriptionSetup } from "./components/transcription-setup";
 import type { DrEpisode } from "@/lib/dr";
 import type { TimedSentence } from "@/lib/timed-transcript";
 import {
+  DEFAULT_TRANSCRIPTION_MODE,
+  isTranscriptionMode,
+  TRANSCRIPTION_MODES,
+  type TranscriptionMode,
+} from "@/lib/transcription-mode";
+import {
   addCachedTranscript,
   findCachedTranscript,
   parseTranscriptCache,
@@ -24,13 +30,15 @@ import {
 // Keep the legacy keys so existing visitors retain their API key and transcripts.
 const API_KEY_STORAGE = "danish-listening-companion.openai-api-key";
 const TRANSCRIPT_CACHE_STORAGE = "danish-listening-companion.transcripts.v1";
-const TRANSCRIPTION_MODEL = "whisper-1";
+const TRANSCRIPTION_MODE_STORAGE = "hvad-sagde-de:transcription-mode";
 const GENSTART_REFERENCE_URL =
   "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/sort-mand-paa-plakaten-11802650176";
 
 export function HvadSagdeDe() {
   const [url, setUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [transcriptionMode, setTranscriptionMode] =
+    useState<TranscriptionMode>(DEFAULT_TRANSCRIPTION_MODE);
   const [isApiKeyInputVisible, setIsApiKeyInputVisible] = useState(false);
   const [episode, setEpisode] = useState<DrEpisode | null>(null);
   const [phase, setPhase] = useState<TranscriptionPhase>("idle");
@@ -65,9 +73,12 @@ export function HvadSagdeDe() {
 
   useEffect(() => {
     let storedKey = "";
+    let storedMode = DEFAULT_TRANSCRIPTION_MODE;
     let storedTranscripts: TranscriptCacheEntry[] = [];
     try {
       storedKey = localStorage.getItem(API_KEY_STORAGE) ?? "";
+      const savedMode = localStorage.getItem(TRANSCRIPTION_MODE_STORAGE);
+      if (savedMode && isTranscriptionMode(savedMode)) storedMode = savedMode;
       storedTranscripts = parseTranscriptCache(
         localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
       );
@@ -76,6 +87,7 @@ export function HvadSagdeDe() {
     }
     const frame = requestAnimationFrame(() => {
       setApiKey(storedKey);
+      setTranscriptionMode(storedMode);
       setIsApiKeyInputVisible(!storedKey);
       setCachedEpisodes(storedTranscripts);
       setHasLoadedBrowserStorage(true);
@@ -250,7 +262,7 @@ export function HvadSagdeDe() {
       const cachedTranscript =
         selectedCache?.audioUrl === body.episode.audioUrl
           ? selectedCache
-          : readCachedTranscript(body.episode.audioUrl);
+          : readCachedTranscript(body.episode.audioUrl, transcriptionMode);
       if (cachedTranscript) {
         setTranscript(cachedTranscript.transcript);
         setTimedSentences(cachedTranscript.timedSentences ?? []);
@@ -285,6 +297,15 @@ export function HvadSagdeDe() {
     setIsApiKeyInputVisible(true);
   }
 
+  function handleTranscriptionMode(mode: TranscriptionMode) {
+    setTranscriptionMode(mode);
+    try {
+      localStorage.setItem(TRANSCRIPTION_MODE_STORAGE, mode);
+    } catch {
+      // Keep the selected mode for this session.
+    }
+  }
+
   async function handleTranscribe() {
     if (!episode || !apiKey.trim() || isWorking) return;
 
@@ -303,6 +324,7 @@ export function HvadSagdeDe() {
       const result = await transcribeEpisode({
         url: episode.sourceUrl,
         apiKey: apiKey.trim(),
+        mode: transcriptionMode,
         signal: controller.signal,
         onProgress(event) {
           setPhase(event.phase);
@@ -318,6 +340,7 @@ export function HvadSagdeDe() {
         episode,
         result.text,
         result.sentences,
+        transcriptionMode,
         true,
       );
       if (updatedCache) {
@@ -556,10 +579,12 @@ export function HvadSagdeDe() {
                 apiKey={apiKey}
                 isApiKeyInputVisible={isApiKeyInputVisible}
                 isWorking={isWorking}
+                transcriptionMode={transcriptionMode}
                 isPlaying={isPlaying}
                 onTogglePlayback={() => void toggleEpisodePlayback()}
                 onApiKeyChange={handleApiKey}
                 onForgetApiKey={forgetApiKey}
+                onTranscriptionModeChange={handleTranscriptionMode}
                 onTranscribe={() => void handleTranscribe()}
               />
             )}
@@ -633,12 +658,19 @@ export function HvadSagdeDe() {
   );
 }
 
-function readCachedTranscript(audioUrl: string): TranscriptCacheEntry | undefined {
+function readCachedTranscript(
+  audioUrl: string,
+  mode: TranscriptionMode,
+): TranscriptCacheEntry | undefined {
   try {
     const entries = parseTranscriptCache(
       localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
     );
-    return findCachedTranscript(entries, audioUrl, TRANSCRIPTION_MODEL);
+    return findCachedTranscript(
+      entries,
+      audioUrl,
+      TRANSCRIPTION_MODES[mode].modelKey,
+    );
   } catch {
     return undefined;
   }
@@ -648,6 +680,7 @@ function cacheTranscript(
   episode: DrEpisode,
   transcript: string,
   timedSentences: TimedSentence[],
+  mode: TranscriptionMode,
   createNewVersion = false,
 ): TranscriptCacheEntry[] | null {
   try {
@@ -657,13 +690,13 @@ function cacheTranscript(
     const previousVersion = findCachedTranscript(
       entries,
       episode.audioUrl,
-      TRANSCRIPTION_MODEL,
+      TRANSCRIPTION_MODES[mode].modelKey,
     );
     const updated = addCachedTranscript(
       entries,
       {
         audioUrl: episode.audioUrl,
-        model: TRANSCRIPTION_MODEL,
+        model: TRANSCRIPTION_MODES[mode].modelKey,
         transcript,
         timedSentences,
         cachedAt: Date.now(),
