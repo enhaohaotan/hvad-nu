@@ -70,6 +70,32 @@ input[type="range"]:disabled {
   line-height: 0.72;
 }
 
+.editorial-scrollbar::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+  -webkit-appearance: none;
+}
+
+.editorial-scrollbar::-webkit-scrollbar-track {
+  margin: 0 !important;
+  background: #e9e1d4 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+.editorial-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 28px;
+  background: #70695f !important;
+  background-clip: border-box !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.editorial-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9f211e;
+}
+
 ::selection {
   background: rgba(217, 54, 46, 0.18);
 }
