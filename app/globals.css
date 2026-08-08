@@ -92,28 +92,6 @@ input[type="range"]:disabled {
   background: rgba(11, 74, 71, 0.18);
 }
 
-.profile-input {
-  width: 100%;
-  min-height: 52px;
-  border: 1px solid rgba(41, 35, 27, 0.35);
-  border-radius: 0;
-  background: rgba(247, 242, 232, 0.7);
-  padding: 0 1rem;
-  color: #1d1915;
-  font-size: 15px;
-  outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.profile-input::placeholder {
-  color: #8d8579;
-}
-
-.profile-input:focus {
-  border-color: #0b4a47;
-  box-shadow: 0 0 0 2px rgba(11, 74, 71, 0.15);
-}
-
 .editorial-copy::first-letter {
   float: left;
   margin: 0.1em 0.12em 0 0;

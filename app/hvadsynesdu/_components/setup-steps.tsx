@@ -29,39 +29,10 @@ export function SetupSteps({
     >
       <div className="grid lg:grid-cols-[190px_1fr]">
         <div className="border-b border-[#0b4a47]/35 py-5 lg:border-b-0 lg:border-r lg:pr-8">
-          <StepLabel number="01" label="Indstil din læring" accent="#0b4a47" />
+          <StepLabel number="01" label="Gem din API-nøgle" accent="#0b4a47" />
         </div>
         <div className="py-7 sm:py-9 lg:pl-8">
-          <h2 className="editorial-serif text-3xl leading-none tracking-[-0.025em] sm:text-4xl">
-            API-nøgle og niveau
-          </h2>
-          <div className="mt-7 grid gap-6 md:grid-cols-2">
-            <ApiKeyField apiKey={apiKey} onChange={onApiKeyChange} />
-            <label className="block">
-              <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-[#5f736c]">
-                Dit danske niveau
-              </span>
-              <select
-                value={profile.level}
-                onChange={(event) =>
-                  onProfileChange({
-                    level: event.target.value,
-                    updatedAt: profile.updatedAt,
-                  })
-                }
-                className="profile-input"
-              >
-                <option>B1</option>
-                <option>B2</option>
-                <option>C1</option>
-                <option>C2</option>
-              </select>
-            </label>
-          </div>
-          <p className="mt-4 text-xs leading-5 text-[#65766f]">
-            Begge dele gemmes automatisk i denne browser, så du ikke skal
-            udfylde dem igen.
-          </p>
+          <ApiKeyField apiKey={apiKey} onChange={onApiKeyChange} />
         </div>
       </div>
 
@@ -73,8 +44,29 @@ export function SetupSteps({
           <StepLabel number="02" label="Opret dagens session" accent="#0b4a47" />
         </div>
         <div className="py-7 sm:py-9 lg:pl-8">
+          <label className="block border-b border-[#29231b]/20 pb-7">
+            <span className="editorial-serif block text-xl">Dit danske niveau</span>
+            <select
+              value={profile.level}
+              onChange={(event) =>
+                onProfileChange({
+                  level: event.target.value,
+                  updatedAt: profile.updatedAt,
+                })
+              }
+              className="mt-3 min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 text-[15px] outline-none transition focus:border-[#0b4a47] focus:ring-2 focus:ring-[#0b4a47]/15"
+            >
+              <option>B1</option>
+              <option>B2</option>
+              <option>C1</option>
+              <option>C2</option>
+            </select>
+            <span className="mt-2 block text-xs leading-5 text-[#6b655b]">
+              Niveauet gemmes automatisk i denne browser.
+            </span>
+          </label>
           <p className="capitalize text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4d6e65]">
-            {todayLabel} · ca. 25 minutter
+            <span className="mt-7 block">{todayLabel} · ca. 25 minutter</span>
           </p>
           <h2 className="editorial-serif mt-4 text-3xl leading-none tracking-[-0.025em] sm:text-4xl">
             Har du noget at sige i dag?
@@ -114,39 +106,42 @@ function ApiKeyField({
   onChange: (value: string) => void;
 }) {
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-4">
-        <label
-          htmlFor="learning-api-key"
-          className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#5f736c]"
-        >
-          OpenAI API-nøgle
-        </label>
+    <div className="border-t border-[#29231b]/20 pt-6">
+      <div className="flex items-end justify-between gap-4">
+        <p className="editorial-serif text-xl">OpenAI API-nøgle</p>
         {apiKey && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#575147] underline decoration-current/35 underline-offset-4 hover:text-[#0b4a47]"
+            className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#0b4a47] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a47]/25"
           >
             Fjern nøgle
           </button>
         )}
       </div>
       {apiKey ? (
-        <div className="flex min-h-[52px] items-center border border-[#0b4a47]/25 bg-[#0b4a47]/5 px-4 text-sm font-semibold text-[#425f57]">
+        <p className="mt-3 border border-[#0b4a47]/40 bg-[#0b4a47]/5 px-4 py-3 text-xs font-semibold text-[#425f57]">
           API-nøglen er gemt i denne browser
-        </div>
+        </p>
       ) : (
-        <input
-          id="learning-api-key"
-          type="password"
-          value={apiKey}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="sk-…"
-          autoComplete="off"
-          className="profile-input"
-        />
+        <>
+          <label htmlFor="learning-api-key" className="sr-only">OpenAI API-nøgle</label>
+          <input
+            id="learning-api-key"
+            type="password"
+            value={apiKey}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="sk-…"
+            autoComplete="off"
+            spellCheck={false}
+            className="mt-3 min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 font-mono text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#0b4a47] focus:ring-2 focus:ring-[#0b4a47]/15"
+          />
+        </>
       )}
+      <p className="mt-2 text-xs leading-5 text-[#6b655b]">
+        API-nøglen gemmes i denne browser. Den bliver først sendt, når
+        AI-funktionen tilføjes, og gemmes aldrig på vores server.
+      </p>
     </div>
   );
 }
