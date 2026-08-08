@@ -319,17 +319,17 @@ export function TranscriptView({
 
       <article
         aria-live="polite"
-        className="editorial-copy mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] leading-[1.8] text-[#332e27] sm:py-12 sm:text-[16px]"
+        className={`${showTranslation ? "transcript-with-translation leading-[2.45]" : "editorial-copy leading-[1.8]"} mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] text-[#332e27] sm:py-12 sm:text-[16px]`}
       >
         {displaySentences.map((sentence, index) => {
           const isTimed = sentence.start !== undefined;
           const isActive = index === activeSentenceIndex;
           const content = showTranslation && selectedTranslations?.[index] ? (
-            <ruby className="[ruby-align:start] [ruby-position:under]">
+            <ruby className="transcript-ruby">
               {sentence.text}
               <rt
                 lang={translationLanguage}
-                className="font-sans text-[10px] font-normal leading-tight text-[#65705f] sm:text-[11px]"
+                className="font-sans text-[10px] font-normal text-[#65705f] sm:text-[11px]"
               >
                 {selectedTranslations[index]}
               </rt>
@@ -341,21 +341,27 @@ export function TranscriptView({
           return isTimed ? (
             <span
               key={`${sentence.start}:${sentence.text.slice(0, 32)}`}
-              role="button"
-              tabIndex={0}
+              role={isPlayerOpen ? "button" : undefined}
+              tabIndex={isPlayerOpen ? 0 : undefined}
               aria-current={isActive ? "true" : undefined}
-              onClick={() => onSeekTo(sentence.start ?? 0)}
+              onClick={
+                isPlayerOpen
+                  ? () => onSeekTo(sentence.start ?? 0)
+                  : undefined
+              }
               onKeyDown={(event) => {
+                if (!isPlayerOpen) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   onSeekTo(sentence.start ?? 0);
                 }
               }}
-              title="Afspil fra denne sætning"
-              className={`cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
+              className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
                 isActive
-                  ? "bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
-                  : "hover:bg-[#e7dfcf] [box-decoration-break:clone]"
+                  ? "cursor-pointer bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
+                  : isPlayerOpen
+                    ? "cursor-pointer hover:bg-[#e7dfcf] [box-decoration-break:clone]"
+                    : ""
               }`}
             >
               {content}

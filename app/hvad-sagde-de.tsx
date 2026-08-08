@@ -440,11 +440,10 @@ export function HvadSagdeDe() {
 
   async function seekToSentence(seconds: number) {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !isPlayerOpen) return;
     const limit = Number.isFinite(audio.duration) ? audio.duration : seconds;
     audio.currentTime = Math.min(Math.max(seconds, 0), limit);
     setCurrentTime(audio.currentTime);
-    setIsPlayerOpen(true);
     setPlayerError("");
     try {
       await audio.play();

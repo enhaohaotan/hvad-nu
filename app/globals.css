@@ -70,6 +70,25 @@ input[type="range"]:disabled {
   line-height: 0.72;
 }
 
+.transcript-with-translation {
+  text-align: left;
+  text-justify: auto;
+}
+
+.transcript-ruby {
+  ruby-align: start;
+  ruby-position: under;
+}
+
+.transcript-ruby rt {
+  letter-spacing: normal;
+  line-height: 1.25;
+  padding-top: 0.35em;
+  text-align: left;
+  text-justify: auto;
+  word-spacing: normal;
+}
+
 .editorial-scrollbar::-webkit-scrollbar {
   width: 4px !important;
   height: 4px !important;
