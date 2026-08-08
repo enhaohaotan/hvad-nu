@@ -469,9 +469,10 @@ export function HvadSagdeDe() {
 
   async function seekToSentence(seconds: number) {
     const audio = audioRef.current;
-    if (!audio || !isPlayerOpen) return;
+    if (!audio) return;
     const limit = Number.isFinite(audio.duration) ? audio.duration : seconds;
     const target = Math.min(Math.max(seconds, 0), limit);
+    setIsPlayerOpen(true);
     beginPendingSeek(target);
     audio.currentTime = target;
     setPlayerError("");

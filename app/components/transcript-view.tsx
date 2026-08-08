@@ -33,6 +33,8 @@ export function TranscriptView({
   apiKey,
   phase,
   isCopied,
+  presetTranslations,
+  availableTranslationLanguages,
   onCopy,
   onDownload,
   onSeekTo,
@@ -45,16 +47,25 @@ export function TranscriptView({
   apiKey: string;
   phase: TranscriptionPhase;
   isCopied: boolean;
+  presetTranslations?: Partial<Record<TranslationLanguage, string[]>>;
+  availableTranslationLanguages?: TranslationLanguage[];
   onCopy: () => void;
   onDownload: () => void;
   onSeekTo: (seconds: number) => void;
 }) {
   const [showTranslation, setShowTranslation] = useState(false);
-  const [translationLanguage, setTranslationLanguage] =
-    useState<TranslationLanguage>(getInitialTranslationLanguage);
+  const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguage>(
+    () => {
+      const initialLanguage = getInitialTranslationLanguage();
+      return availableTranslationLanguages?.length &&
+        !availableTranslationLanguages.includes(initialLanguage)
+        ? availableTranslationLanguages[0]
+        : initialLanguage;
+    },
+  );
   const [translations, setTranslations] = useState<
     Partial<Record<TranslationLanguage, string[]>>
-  >({});
+  >(() => presetTranslations ?? {});
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState("");
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
@@ -75,6 +86,11 @@ export function TranscriptView({
     return -1;
   }, [currentTime, isPlayerOpen, timedSentences]);
   const selectedTranslations = translations[translationLanguage];
+  const languageEntries = Object.entries(TRANSLATION_LANGUAGES).filter(
+    ([language]) =>
+      !availableTranslationLanguages?.length ||
+      availableTranslationLanguages.includes(language as TranslationLanguage),
+  );
 
   useEffect(() => {
     if (!isActionsMenuOpen) return;
@@ -266,12 +282,12 @@ export function TranscriptView({
                     <span>Hent tekst</span>
                     <span aria-hidden="true">↓</span>
                   </button>
-                  <div className="mx-2 my-1.5 border-t border-[#29231b]/25" />
+                  <div className="-mx-1.5 my-1.5 border-t border-[#29231b]/25" />
                   <p className="px-3 pb-1 pt-1 text-[8px] font-semibold uppercase tracking-[0.16em] text-[#70695f]">
                     Oversæt til
                   </p>
-                  <div className="editorial-scrollbar -mb-1.5 -mr-1.5 max-h-56 overflow-y-auto">
-                    {Object.entries(TRANSLATION_LANGUAGES).map(
+                  <div className="editorial-scrollbar -mx-1.5 -mb-1.5 max-h-56 overflow-y-auto">
+                    {languageEntries.map(
                       ([language, label]) => (
                         <button
                           key={language}
@@ -334,16 +350,11 @@ export function TranscriptView({
           return isTimed ? (
             <span
               key={`${sentence.start}:${sentence.text.slice(0, 32)}`}
-              role={isPlayerOpen ? "button" : undefined}
-              tabIndex={isPlayerOpen ? 0 : undefined}
+              role="button"
+              tabIndex={0}
               aria-current={isActive ? "true" : undefined}
-              onClick={
-                isPlayerOpen
-                  ? () => onSeekTo(sentence.start ?? 0)
-                  : undefined
-              }
+              onClick={() => onSeekTo(sentence.start ?? 0)}
               onKeyDown={(event) => {
-                if (!isPlayerOpen) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   onSeekTo(sentence.start ?? 0);
@@ -352,9 +363,7 @@ export function TranscriptView({
               className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
                 isActive
                   ? "cursor-pointer bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
-                  : isPlayerOpen
-                    ? "cursor-pointer hover:bg-[#e7dfcf] [box-decoration-break:clone]"
-                    : ""
+                  : "cursor-pointer hover:bg-[#e7dfcf] [box-decoration-break:clone]"
               }`}
             >
               {content}

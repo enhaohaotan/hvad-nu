@@ -8,65 +8,55 @@ import { StatusPanel } from "../components/status-panel";
 import { TranscriptView } from "../components/transcript-view";
 import { DemoTranscriptionSetup } from "./demo-transcription-setup";
 import type { DrEpisode } from "@/lib/dr";
+import type { TimedSentence } from "@/lib/timed-transcript";
 import type { TranscriptCacheEntry } from "@/lib/transcript-cache";
 import type { TranscriptionPhase } from "@/lib/transcription-client";
+import type { TranslationLanguage } from "@/lib/translation";
 
 type DemoEpisodeConfig = {
   sourceUrl: string;
-  transcriptUrl: string;
+  dataUrl: string;
   downloadName: string;
   episodeTitle: string;
   publishedAt: string;
   duration: string;
 };
 
+type DemoContent = {
+  transcript: string;
+  timedSentences: TimedSentence[];
+  translations: Partial<Record<TranslationLanguage, string[]>>;
+};
+
 const DEMO_EPISODES: DemoEpisodeConfig[] = [
   {
     sourceUrl:
-      "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/efterladt-paa-perronen-11802650175",
-    transcriptUrl: "/demo/efterladt-paa-perronen.txt",
-    downloadName: "efterladt-paa-perronen.txt",
-    episodeTitle: "Efterladt på perronen",
-    publishedAt: "2026-07-27T00:00:00.000Z",
-    duration: "00:24:00",
-  },
-  {
-    sourceUrl:
-      "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/sort-mand-paa-plakaten-11802650176",
-    transcriptUrl: "/demo/sort-mand-paa-plakaten.txt",
-    downloadName: "sort-mand-paa-plakaten.txt",
-    episodeTitle: "Sort mand på plakaten",
-    publishedAt: "2026-07-28T00:00:00.000Z",
-    duration: "00:20:00",
-  },
-  {
-    sourceUrl:
-      "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/madonna-er-tilbage-11802650179",
-    transcriptUrl: "/demo/madonna-er-tilbage.txt",
-    downloadName: "madonna-er-tilbage.txt",
-    episodeTitle: "Madonna er tilbage",
-    publishedAt: "2026-07-31T00:00:00.000Z",
-    duration: "00:24:00",
+      "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/tate-broedre-buret-inde-11802650181",
+    dataUrl: "/demo/tate-broedre-buret-inde.json",
+    downloadName: "tate-broedre-buret-inde.txt",
+    episodeTitle: "Tate-brødre buret inde",
+    publishedAt: "2026-08-04T03:00:00+02:00",
+    duration: "00:23:41",
   },
 ];
 
 const INITIAL_DEMO = DEMO_EPISODES[0];
-const LATEST_DEMO = DEMO_EPISODES[2];
+const LATEST_DEMO = DEMO_EPISODES[0];
 const LATEST_EPISODE: DrEpisode = {
-  id: "demo-madonna",
+  id: "demo-tate",
   showTitle: "Genstart",
   episodeTitle: LATEST_DEMO.episodeTitle,
   description: "",
   duration: LATEST_DEMO.duration,
   publishedAt: LATEST_DEMO.publishedAt,
   imageUrl: "",
-  audioUrl: "demo:madonna-er-tilbage",
+  audioUrl: "demo:tate-broedre-buret-inde",
   sourceUrl: LATEST_DEMO.sourceUrl,
 };
 
 const INITIAL_HISTORY: TranscriptCacheEntry[] = DEMO_EPISODES.slice(0, 2).map(
   (item, index) => ({
-    audioUrl: `demo:${item.downloadName}`,
+    audioUrl: `demo:${item.downloadName.replace(/\.txt$/, "")}`,
     model: "demo",
     transcript: "",
     cachedAt: Date.UTC(2026, 7, 5, 18, 49 - index * 6),
@@ -87,8 +77,12 @@ export function DemoPage() {
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState(0);
   const [transcript, setTranscript] = useState("");
-  const [demoTranscripts, setDemoTranscripts] = useState<
-    Record<string, string>
+  const [demoContent, setDemoContent] = useState<Record<string, DemoContent>>(
+    {},
+  );
+  const [timedSentences, setTimedSentences] = useState<TimedSentence[]>([]);
+  const [presetTranslations, setPresetTranslations] = useState<
+    Partial<Record<TranslationLanguage, string[]>>
   >({});
   const [demoHistory, setDemoHistory] =
     useState<TranscriptCacheEntry[]>(INITIAL_HISTORY);
@@ -101,6 +95,9 @@ export function DemoPage() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [playerError, setPlayerError] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
+  const hasCompletedSeekRef = useRef(false);
+  const seekFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resolveAbortRef = useRef<AbortController | null>(null);
   const simulationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const copyFeedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,15 +105,12 @@ export function DemoPage() {
   useEffect(() => {
     const controller = new AbortController();
     void Promise.all(
-      DEMO_EPISODES.map(async (item) => {
-        const response = await fetch(item.transcriptUrl, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error("Demo transcript unavailable");
-        return [item.sourceUrl, await response.text()] as const;
-      }),
+      DEMO_EPISODES.map(async (item) => [
+        item.sourceUrl,
+        await fetchDemoContent(item, controller.signal),
+      ] as const),
     )
-      .then((entries) => setDemoTranscripts(Object.fromEntries(entries)))
+      .then((entries) => setDemoContent(Object.fromEntries(entries)))
       .catch(() => {
         if (!controller.signal.aborted) {
           setMessage("Demoens transskription kunne ikke indlæses.");
@@ -129,6 +123,7 @@ export function DemoPage() {
       resolveAbortRef.current?.abort();
       if (simulationRef.current) clearInterval(simulationRef.current);
       if (copyFeedbackRef.current) clearTimeout(copyFeedbackRef.current);
+      if (seekFallbackRef.current) clearTimeout(seekFallbackRef.current);
     };
   }, []);
 
@@ -145,13 +140,11 @@ export function DemoPage() {
     setUrl(value);
   }
 
-  async function loadDemoTranscript(item: DemoEpisodeConfig) {
-    const existing = demoTranscripts[item.sourceUrl];
+  async function loadDemoContent(item: DemoEpisodeConfig) {
+    const existing = demoContent[item.sourceUrl];
     if (existing) return existing;
-    const response = await fetch(item.transcriptUrl);
-    if (!response.ok) throw new Error("Demo transcript unavailable");
-    const loaded = await response.text();
-    setDemoTranscripts((current) => ({
+    const loaded = await fetchDemoContent(item);
+    setDemoContent((current) => ({
       ...current,
       [item.sourceUrl]: loaded,
     }));
@@ -173,6 +166,8 @@ export function DemoPage() {
     setActiveDemo(selectedDemo);
     setEpisode(null);
     setTranscript("");
+    setTimedSentences([]);
+    setPresetTranslations({});
     setPhase("resolving");
     setMessage("Finder demoepisoden i DR LYD…");
     setProgress(6);
@@ -191,8 +186,10 @@ export function DemoPage() {
       }
       setEpisode(body.episode);
       if (selectedCache) {
-        const savedTranscript = await loadDemoTranscript(selectedDemo);
-        setTranscript(savedTranscript);
+        const savedContent = await loadDemoContent(selectedDemo);
+        setTranscript(savedContent.transcript);
+        setTimedSentences(savedContent.timedSentences);
+        setPresetTranslations(savedContent.translations);
         setPhase("done");
         setMessage(
           "Episoden er transskriberet før — den gemte tekst vises igen",
@@ -217,9 +214,9 @@ export function DemoPage() {
 
   async function startSimulation() {
     if (!episode || isWorking) return;
-    let preparedTranscript = "";
+    let preparedContent: DemoContent;
     try {
-      preparedTranscript = await loadDemoTranscript(activeDemo);
+      preparedContent = await loadDemoContent(activeDemo);
     } catch {
       setPhase("error");
       setMessage("Demoens transskription kunne ikke indlæses.");
@@ -228,6 +225,8 @@ export function DemoPage() {
 
     if (simulationRef.current) clearInterval(simulationRef.current);
     setTranscript("");
+    setTimedSentences([]);
+    setPresetTranslations({});
     setIsCopied(false);
     setPhase("downloading");
     setMessage("Downloader episoden fra DR LYD…");
@@ -253,15 +252,19 @@ export function DemoPage() {
         setPhase("transcribing");
         setMessage(`Transskriberer lyddel ${chunk} af 3…`);
         setTranscript(
-          preparedTranscript.slice(
+          preparedContent.transcript.slice(
             0,
-            Math.floor(preparedTranscript.length * transcriptionProgress),
+            Math.floor(
+              preparedContent.transcript.length * transcriptionProgress,
+            ),
           ),
         );
       } else {
         if (simulationRef.current) clearInterval(simulationRef.current);
         simulationRef.current = null;
-        setTranscript(preparedTranscript);
+        setTranscript(preparedContent.transcript);
+        setTimedSentences(preparedContent.timedSentences);
+        setPresetTranslations(preparedContent.translations);
         setPhase("done");
         setMessage("Demo-transskriptionen er klar");
       }
@@ -276,6 +279,8 @@ export function DemoPage() {
     setMessage("");
     setProgress(0);
     setTranscript("");
+    setTimedSentences([]);
+    setPresetTranslations({});
   }
 
   async function openPlayer() {
@@ -314,20 +319,40 @@ export function DemoPage() {
     const audio = audioRef.current;
     if (!audio) return;
     const limit = Number.isFinite(audio.duration) ? audio.duration : 0;
-    audio.currentTime = Math.min(
+    const target = Math.min(
       Math.max(audio.currentTime + seconds, 0),
       limit,
     );
+    beginPendingSeek(target);
+    audio.currentTime = target;
+  }
+
+  async function seekToSentence(seconds: number) {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const limit = Number.isFinite(audio.duration) ? audio.duration : seconds;
+    const target = Math.min(Math.max(seconds, 0), limit);
+    setIsPlayerOpen(true);
+    beginPendingSeek(target);
+    audio.currentTime = target;
+    setPlayerError("");
+    try {
+      await audio.play();
+    } catch {
+      setPlayerError("Lyden kunne ikke afspilles.");
+    }
   }
 
   function closePlayer() {
     audioRef.current?.pause();
+    clearPendingSeek();
     setIsPlayerOpen(false);
     setIsPlaying(false);
     setPlayerError("");
   }
 
   function resetPlayer() {
+    clearPendingSeek();
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -340,6 +365,51 @@ export function DemoPage() {
     setAudioDuration(0);
     setPlaybackRate(1);
     setPlayerError("");
+  }
+
+  function updatePlaybackTime(value: number) {
+    const pendingTarget = pendingSeekRef.current;
+    if (pendingTarget !== null) {
+      if (!hasCompletedSeekRef.current || value < pendingTarget) return;
+      clearPendingSeek();
+    }
+    setCurrentTime(value);
+  }
+
+  function finishPlaybackSeek(value: number) {
+    const pendingTarget = pendingSeekRef.current;
+    if (pendingTarget === null) {
+      setCurrentTime(value);
+      return;
+    }
+    hasCompletedSeekRef.current = true;
+    if (value >= pendingTarget) {
+      clearPendingSeek();
+      setCurrentTime(value);
+    } else {
+      setCurrentTime(pendingTarget);
+    }
+  }
+
+  function beginPendingSeek(target: number) {
+    clearPendingSeek();
+    pendingSeekRef.current = target;
+    hasCompletedSeekRef.current = false;
+    setCurrentTime(target);
+    seekFallbackRef.current = setTimeout(() => {
+      if (pendingSeekRef.current !== target) return;
+      pendingSeekRef.current = null;
+      hasCompletedSeekRef.current = false;
+      seekFallbackRef.current = null;
+      setCurrentTime(Math.max(audioRef.current?.currentTime ?? target, target));
+    }, 1500);
+  }
+
+  function clearPendingSeek() {
+    pendingSeekRef.current = null;
+    hasCompletedSeekRef.current = false;
+    if (seekFallbackRef.current) clearTimeout(seekFallbackRef.current);
+    seekFallbackRef.current = null;
   }
 
   async function copyTranscript() {
@@ -464,18 +534,22 @@ export function DemoPage() {
 
             {transcript && (
               <TranscriptView
-                key={episode?.audioUrl}
+                key={`${episode?.audioUrl}:${timedSentences.length}`}
                 episodeTitle={episode?.episodeTitle}
                 transcript={transcript}
-                timedSentences={[]}
+                timedSentences={timedSentences}
                 currentTime={currentTime}
                 isPlayerOpen={isPlayerOpen}
                 apiKey=""
                 phase={phase}
                 isCopied={isCopied}
+                presetTranslations={presetTranslations}
+                availableTranslationLanguages={
+                  Object.keys(presetTranslations) as TranslationLanguage[]
+                }
                 onCopy={() => void copyTranscript()}
                 onDownload={downloadTranscript}
-                onSeekTo={() => {}}
+                onSeekTo={(seconds) => void seekToSentence(seconds)}
               />
             )}
           </section>
@@ -505,7 +579,8 @@ export function DemoPage() {
           playbackRate={playbackRate}
           error={playerError}
           onDurationChange={setAudioDuration}
-          onTimeChange={setCurrentTime}
+          onTimeChange={updatePlaybackTime}
+          onSeekComplete={finishPlaybackSeek}
           onPlayingChange={setIsPlaying}
           onRateChange={setPlaybackRate}
           onReady={() => setPlayerError("")}
@@ -521,4 +596,26 @@ export function DemoPage() {
 
 function findDemoEpisode(value: string): DemoEpisodeConfig | undefined {
   return DEMO_EPISODES.find((item) => item.sourceUrl === value);
+}
+
+async function fetchDemoContent(
+  item: DemoEpisodeConfig,
+  signal?: AbortSignal,
+): Promise<DemoContent> {
+  const response = await fetch(item.dataUrl, { signal });
+  if (!response.ok) throw new Error("Demo transcript unavailable");
+
+  const data = (await response.json()) as Partial<DemoContent>;
+  if (
+    typeof data.transcript !== "string" ||
+    !Array.isArray(data.timedSentences) ||
+    !data.translations
+  ) {
+    throw new Error("Demo transcript unavailable");
+  }
+  return {
+    transcript: data.transcript,
+    timedSentences: data.timedSentences,
+    translations: data.translations,
+  };
 }
