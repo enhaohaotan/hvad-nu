@@ -6,6 +6,11 @@ import { ReadingSection } from "./_components/reading-section";
 import { SetupSteps } from "./_components/setup-steps";
 import { ThinkingSection } from "./_components/thinking-section";
 import { useLearningSession } from "./use-learning-session";
+import {
+  ProductFooter,
+  ProductHeader,
+  ProductHero,
+} from "@/app/_components/product-chrome";
 
 export function HvadSynesDu() {
   const learning = useLearningSession();
@@ -14,15 +19,17 @@ export function HvadSynesDu() {
   return (
     <main className="discussion-product min-h-screen bg-[#0b4a47] p-2.5 text-[#1d1915] sm:p-5 lg:p-7">
       <div className="editorial-sheet min-h-[calc(100vh-20px)] w-full bg-[#f3eddf] px-5 pb-8 pt-6 shadow-[0_24px_80px_rgba(1,35,34,0.3)] sm:min-h-[calc(100vh-40px)] sm:px-10 sm:pb-10 lg:min-h-[calc(100vh-56px)] lg:px-16 lg:pt-9">
-        <header className="flex items-center justify-between gap-4 border-b border-[#193b36]/70 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] sm:pb-3 sm:text-xs sm:tracking-[0.18em]">
-          <span>Hva’ synes du?</span>
-          <span className="text-right text-[#4d6e65]">
-            For dem, der stadig siger “hva’?”
-          </span>
-        </header>
+        <ProductHeader
+          title="Hva’ synes du?"
+          secondaryColor="#4d6e65"
+          borderColor="rgba(25,59,54,0.7)"
+        />
 
         <section id="top" className="pt-6 sm:pt-14 lg:pt-16">
-          <Hero />
+          <ProductHero title="Hva’ synes du?">
+            Fra det, du forstår, til det, du selv kan sige. Én dansk tekst, én
+            samtale og feedback, der følger med videre.
+          </ProductHero>
           <SetupSteps
             apiKey={learning.apiKey}
             hasLoaded={learning.hasLoaded}
@@ -81,33 +88,13 @@ export function HvadSynesDu() {
           history={learning.history}
         />
 
-        <footer className="mt-14 flex items-center justify-between gap-4 border-t border-[#193b36]/70 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#575147]">
-          <address className="not-italic">
-            <button
-              type="button"
-              onClick={() => void learning.copyContactEmail()}
-              className="cursor-pointer uppercase underline decoration-current/35 underline-offset-4 transition hover:text-[#0b4a47] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a47]/25"
-            >
-              {learning.isContactCopied ? "E-MAIL KOPIERET" : "KONTAKT"}
-            </button>
-          </address>
-          <span>© 2026 Enhao Tan</span>
-        </footer>
+        <ProductFooter
+          borderColor="rgba(25,59,54,0.7)"
+          interactionClassName="hover:text-[#0b4a47] focus-visible:ring-[#0b4a47]/25"
+          isCopied={learning.isContactCopied}
+          onContact={() => void learning.copyContactEmail()}
+        />
       </div>
     </main>
-  );
-}
-
-function Hero() {
-  return (
-    <div className="w-full">
-      <h1 className="editorial-serif text-[clamp(3rem,13vw,4.75rem)] uppercase leading-[0.86] tracking-[-0.06em] sm:text-[clamp(5rem,8vw,8.5rem)] sm:leading-[0.82] sm:tracking-[-0.065em]">
-        Hva’ synes du?
-      </h1>
-      <p className="editorial-serif mt-5 w-full text-[13px] leading-5 text-[#4b463f] sm:mt-7 sm:text-base sm:leading-7">
-        Fra det, du forstår, til det, du selv kan sige. Én dansk tekst, én
-        samtale og feedback, der følger med videre.
-      </p>
-    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { StepLabel } from "@/app/_components/step-label";
 import type { LearnerProfile, LearningSession } from "../types";
 
 type SetupStepsProps = {
@@ -27,7 +28,9 @@ export function SetupSteps({
       aria-label="Indstil og opret dagens session"
     >
       <div className="grid lg:grid-cols-[190px_1fr]">
-        <StepLabel number="01">Indstil din læring</StepLabel>
+        <div className="border-b border-[#0b4a47]/35 py-5 lg:border-b-0 lg:border-r lg:pr-8">
+          <StepLabel number="01" label="Indstil din læring" accent="#0b4a47" />
+        </div>
         <div className="py-7 sm:py-9 lg:pl-8">
           <h2 className="editorial-serif text-3xl leading-none tracking-[-0.025em] sm:text-4xl">
             API-nøgle og niveau
@@ -66,7 +69,9 @@ export function SetupSteps({
         className="grid border-t border-[#0b4a47]/45 lg:grid-cols-[190px_1fr]"
         aria-label="Opret dagens session"
       >
-        <StepLabel number="02">Opret dagens session</StepLabel>
+        <div className="border-b border-[#0b4a47]/35 py-5 lg:border-b-0 lg:border-r lg:pr-8">
+          <StepLabel number="02" label="Opret dagens session" accent="#0b4a47" />
+        </div>
         <div className="py-7 sm:py-9 lg:pl-8">
           <p className="capitalize text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4d6e65]">
             {todayLabel} · ca. 25 minutter
@@ -98,17 +103,6 @@ export function SetupSteps({
         </div>
       </div>
     </section>
-  );
-}
-
-function StepLabel({ number, children }: { number: string; children: React.ReactNode }) {
-  return (
-    <div className="border-b border-[#0b4a47]/35 py-5 lg:border-b-0 lg:border-r lg:pr-8">
-      <span className="font-mono text-xs font-semibold text-[#0b4a47]">{number}</span>
-      <p className="mt-2 text-[10px] font-semibold uppercase leading-4 tracking-[0.15em] text-[#575147]">
-        {children}
-      </p>
-    </div>
   );
 }
 

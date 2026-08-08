@@ -3,7 +3,7 @@ import type { TranscriptionPhase } from "@/lib/transcription-client";
 import type { TranscriptionMode } from "@/lib/transcription-mode";
 import { ApiKeyPanel } from "./api-key-panel";
 import { EpisodePreview } from "./episode-preview";
-import { StepLabel } from "./step-label";
+import { StepLabel } from "@/app/_components/step-label";
 
 export function TranscriptionSetup({
   episode,

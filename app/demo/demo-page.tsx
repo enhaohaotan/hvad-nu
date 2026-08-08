@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AudioPlayer } from "../components/audio-player";
-import { EpisodePicker } from "../components/episode-picker";
-import { StatusPanel } from "../components/status-panel";
-import { TranscriptView } from "../components/transcript-view";
+import { AudioPlayer } from "../hvadsagdede/_components/audio-player";
+import { EpisodePicker } from "../hvadsagdede/_components/episode-picker";
+import { StatusPanel } from "../hvadsagdede/_components/status-panel";
+import { TranscriptView } from "../hvadsagdede/_components/transcript-view";
 import { DemoTranscriptionSetup } from "./demo-transcription-setup";
 import type { DrEpisode } from "@/lib/dr";
 import type { TimedSentence } from "@/lib/timed-transcript";

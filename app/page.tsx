@@ -1,5 +1,5 @@
-import { HvadSagdeDe } from "./hvad-sagde-de";
+import { permanentRedirect } from "next/navigation";
 
 export default function Home() {
-  return <HvadSagdeDe />;
+  permanentRedirect("/hvadsagdede");
 }

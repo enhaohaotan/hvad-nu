@@ -1,7 +1,7 @@
 import type { DrEpisode } from "@/lib/dr";
 import type { TranscriptionPhase } from "@/lib/transcription-client";
-import { EpisodePreview } from "../components/episode-preview";
-import { StepLabel } from "../components/step-label";
+import { EpisodePreview } from "../hvadsagdede/_components/episode-preview";
+import { StepLabel } from "../_components/step-label";
 
 export function DemoTranscriptionSetup({
   episode,

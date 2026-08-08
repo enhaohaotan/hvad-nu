@@ -9,7 +9,7 @@ import {
   type TranscriptCacheEntry,
 } from "@/lib/transcript-cache";
 import type { TranscriptionPhase } from "@/lib/transcription-client";
-import { StepLabel } from "./step-label";
+import { StepLabel } from "@/app/_components/step-label";
 
 const DR_DISCOVERY_LINKS = [
   { label: "DR LYD", href: "https://www.dr.dk/lyd" },

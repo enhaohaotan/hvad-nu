@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AudioPlayer } from "./components/audio-player";
-import { EpisodePicker } from "./components/episode-picker";
-import { StatusPanel } from "./components/status-panel";
-import { TranscriptView } from "./components/transcript-view";
-import { TranscriptionSetup } from "./components/transcription-setup";
 import type { DrEpisode } from "@/lib/dr";
 import type { TimedSentence } from "@/lib/timed-transcript";
 import {
@@ -26,15 +21,9 @@ import {
   transcribeEpisode,
   type TranscriptionPhase,
 } from "@/lib/transcription-client";
+import { GENSTART_REFERENCE_URL, STORAGE_KEYS } from "./constants";
 
-// Keep the legacy keys so existing visitors retain their API key and transcripts.
-const API_KEY_STORAGE = "danish-listening-companion.openai-api-key";
-const TRANSCRIPT_CACHE_STORAGE = "danish-listening-companion.transcripts.v1";
-const TRANSCRIPTION_MODE_STORAGE = "hvad-sagde-de:transcription-mode";
-const GENSTART_REFERENCE_URL =
-  "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/sort-mand-paa-plakaten-11802650176";
-
-export function HvadSagdeDe() {
+export function useTranscriptionWorkspace() {
   const [url, setUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [transcriptionMode, setTranscriptionMode] =
@@ -79,11 +68,11 @@ export function HvadSagdeDe() {
     let storedMode = DEFAULT_TRANSCRIPTION_MODE;
     let storedTranscripts: TranscriptCacheEntry[] = [];
     try {
-      storedKey = localStorage.getItem(API_KEY_STORAGE) ?? "";
-      const savedMode = localStorage.getItem(TRANSCRIPTION_MODE_STORAGE);
+      storedKey = localStorage.getItem(STORAGE_KEYS.apiKey) ?? "";
+      const savedMode = localStorage.getItem(STORAGE_KEYS.transcriptionMode);
       if (savedMode && isTranscriptionMode(savedMode)) storedMode = savedMode;
       storedTranscripts = parseTranscriptCache(
-        localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
+        localStorage.getItem(STORAGE_KEYS.transcriptCache),
       );
     } catch {
       // Browser storage can be unavailable in hardened privacy modes.
@@ -197,7 +186,7 @@ export function HvadSagdeDe() {
         }
         try {
           localStorage.setItem(
-            TRANSCRIPT_CACHE_STORAGE,
+            STORAGE_KEYS.transcriptCache,
             JSON.stringify(updated),
           );
         } catch {
@@ -289,8 +278,8 @@ export function HvadSagdeDe() {
   function handleApiKey(value: string) {
     setApiKey(value);
     try {
-      if (value) localStorage.setItem(API_KEY_STORAGE, value);
-      else localStorage.removeItem(API_KEY_STORAGE);
+      if (value) localStorage.setItem(STORAGE_KEYS.apiKey, value);
+      else localStorage.removeItem(STORAGE_KEYS.apiKey);
     } catch {
       // The input still works for this session when storage is unavailable.
     }
@@ -304,7 +293,7 @@ export function HvadSagdeDe() {
   function handleTranscriptionMode(mode: TranscriptionMode) {
     setTranscriptionMode(mode);
     try {
-      localStorage.setItem(TRANSCRIPTION_MODE_STORAGE, mode);
+      localStorage.setItem(STORAGE_KEYS.transcriptionMode, mode);
     } catch {
       // Keep the selected mode for this session.
     }
@@ -410,11 +399,11 @@ export function HvadSagdeDe() {
       try {
         if (updated.length > 0) {
           localStorage.setItem(
-            TRANSCRIPT_CACHE_STORAGE,
+            STORAGE_KEYS.transcriptCache,
             JSON.stringify(updated),
           );
         } else {
-          localStorage.removeItem(TRANSCRIPT_CACHE_STORAGE);
+          localStorage.removeItem(STORAGE_KEYS.transcriptCache);
         }
       } catch {
         // The in-memory entry can still be removed when storage is unavailable.
@@ -586,132 +575,56 @@ export function HvadSagdeDe() {
     URL.revokeObjectURL(href);
   }
 
-  return (
-    <main className="min-h-screen bg-[#9f211e] p-2.5 text-[#1d1915] sm:p-5 lg:p-7">
-      <div className="editorial-sheet min-h-[calc(100vh-20px)] w-full bg-[#f3eddf] px-5 pb-8 pt-6 shadow-[0_24px_80px_rgba(43,8,6,0.28)] sm:min-h-[calc(100vh-40px)] sm:px-10 sm:pb-10 lg:min-h-[calc(100vh-56px)] lg:px-16 lg:pt-9">
-        <header className="flex items-center justify-between gap-4 border-b border-[#262018]/70 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] sm:pb-3 sm:text-xs sm:tracking-[0.18em]">
-          <span>Hva’ sagde de?</span>
-          <span className="text-right text-[#66745e]">
-            For dem, der stadig siger “hva’?”
-          </span>
-        </header>
-
-        <section id="top" className="pt-6 sm:pt-14 lg:pt-16">
-          <div className="w-full">
-            <h1 className="editorial-serif text-[clamp(3rem,13vw,4.75rem)] uppercase leading-[0.86] tracking-[-0.06em] sm:text-[clamp(5rem,8vw,8.5rem)] sm:leading-[0.82] sm:tracking-[-0.065em]">
-              Hva’ sagde de?
-            </h1>
-            <p className="editorial-serif mt-5 w-full text-[13px] leading-5 text-[#4b463f] sm:mt-7 sm:text-base sm:leading-7">
-              Gør enhver DR LYD-podcastepisode til en tydelig dansk
-              transskription — klar til at læse med, mens du lytter.
-            </p>
-          </div>
-
-          <section
-            className="mt-6 border-y-2 border-[#9f211e] sm:mt-10"
-            aria-label="Lav en transskription"
-          >
-            <EpisodePicker
-              url={url}
-              phase={phase}
-              isWorking={isWorking}
-              cachedEpisodes={cachedEpisodes}
-              latestSuggestion={latestSuggestion}
-              latestGenstartEpisode={latestGenstartEpisode}
-              suggestionsReady={areEpisodeSuggestionsReady}
-              onUrlChange={setUrl}
-              onResolve={(value, selectedCache) =>
-                void resolveEpisode(value, selectedCache)
-              }
-              onClear={clearEpisode}
-              onRemoveHistory={removeHistoryEntry}
-            />
-
-            {episode && (
-              <TranscriptionSetup
-                episode={episode}
-                phase={phase}
-                apiKey={apiKey}
-                isApiKeyInputVisible={isApiKeyInputVisible}
-                isWorking={isWorking}
-                transcriptionMode={transcriptionMode}
-                isPlaying={isPlaying}
-                onTogglePlayback={() => void toggleEpisodePlayback()}
-                onApiKeyChange={handleApiKey}
-                onForgetApiKey={forgetApiKey}
-                onTranscriptionModeChange={handleTranscriptionMode}
-                onTranscribe={() => void handleTranscribe()}
-              />
-            )}
-
-            {phase !== "resolving" && (isWorking || message) && (
-              <StatusPanel
-                phase={phase}
-                message={message}
-                errorDebug={errorDebug}
-                episodeUrl={episode?.sourceUrl ?? url}
-                progress={progress}
-                isWorking={isWorking}
-                onCancel={() => abortRef.current?.abort()}
-              />
-            )}
-          </section>
-
-          {transcript && (
-            <TranscriptView
-              key={episode?.audioUrl}
-              episodeTitle={episode?.episodeTitle}
-              transcript={transcript}
-              timedSentences={timedSentences}
-              currentTime={currentTime}
-              isPlayerOpen={isPlayerOpen}
-              apiKey={apiKey.trim()}
-              phase={phase}
-              isCopied={isCopied}
-              onCopy={() => void copyTranscript()}
-              onDownload={downloadTranscript}
-              onSeekTo={(seconds) => void seekToSentence(seconds)}
-            />
-          )}
-        </section>
-
-        <footer className="mt-14 flex items-center justify-between gap-4 border-t border-[#262018]/70 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#575147]">
-          <address className="not-italic">
-            <button
-              type="button"
-              onClick={() => void copyContactEmail()}
-              className="cursor-pointer uppercase underline decoration-current/35 underline-offset-4 transition hover:text-[#9f211e] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25"
-            >
-              {isContactCopied ? "E-MAIL KOPIERET" : "KONTAKT"}
-            </button>
-          </address>
-          <span>© 2026 Enhao Tan</span>
-        </footer>
-        {isPlayerOpen && <div className="h-36 sm:h-28" aria-hidden="true" />}
-      </div>
-
-      <AudioPlayer
-        audioRef={audioRef}
-        episode={episode}
-        isOpen={isPlayerOpen}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={audioDuration}
-        playbackRate={playbackRate}
-        error={playerError}
-        onDurationChange={setAudioDuration}
-        onTimeChange={updatePlaybackTime}
-        onSeekComplete={finishPlaybackSeek}
-        onPlayingChange={setIsPlaying}
-        onRateChange={setPlaybackRate}
-        onReady={() => setPlayerError("")}
-        onError={() => setPlayerError("Lyden kunne ikke afspilles.")}
-        onClose={closePlayer}
-        onToggle={() => void togglePlayback()}
-        onSeek={seekBy}
-      />
-    </main>
-  );
+  return {
+    abortRef,
+    apiKey,
+    areEpisodeSuggestionsReady,
+    audioDuration,
+    audioRef,
+    cachedEpisodes,
+    clearEpisode,
+    closePlayer,
+    copyContactEmail,
+    copyTranscript,
+    currentTime,
+    downloadTranscript,
+    episode,
+    errorDebug,
+    finishPlaybackSeek,
+    forgetApiKey,
+    handleApiKey,
+    handleTranscribe,
+    handleTranscriptionMode,
+    isApiKeyInputVisible,
+    isContactCopied,
+    isCopied,
+    isPlayerOpen,
+    isPlaying,
+    isWorking,
+    latestGenstartEpisode,
+    latestSuggestion,
+    message,
+    phase,
+    playbackRate,
+    playerError,
+    progress,
+    removeHistoryEntry,
+    resolveEpisode,
+    seekBy,
+    seekToSentence,
+    setAudioDuration,
+    setIsPlaying,
+    setPlaybackRate,
+    setPlayerError,
+    setUrl,
+    timedSentences,
+    toggleEpisodePlayback,
+    togglePlayback,
+    transcript,
+    transcriptionMode,
+    updatePlaybackTime,
+    url,
+  };
 }
 
 function readCachedTranscript(
@@ -720,7 +633,7 @@ function readCachedTranscript(
 ): TranscriptCacheEntry | undefined {
   try {
     const entries = parseTranscriptCache(
-      localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
+      localStorage.getItem(STORAGE_KEYS.transcriptCache),
     );
     return findCachedTranscript(
       entries,
@@ -741,7 +654,7 @@ function cacheTranscript(
 ): TranscriptCacheEntry[] | null {
   try {
     const entries = parseTranscriptCache(
-      localStorage.getItem(TRANSCRIPT_CACHE_STORAGE),
+      localStorage.getItem(STORAGE_KEYS.transcriptCache),
     );
     const previousVersion = findCachedTranscript(
       entries,
@@ -766,7 +679,7 @@ function cacheTranscript(
       },
       createNewVersion,
     );
-    localStorage.setItem(TRANSCRIPT_CACHE_STORAGE, JSON.stringify(updated));
+    localStorage.setItem(STORAGE_KEYS.transcriptCache, JSON.stringify(updated));
     return updated;
   } catch {
     // A full or unavailable browser store must not interrupt transcription.
