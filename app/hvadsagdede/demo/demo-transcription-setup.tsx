@@ -1,22 +1,17 @@
+import { StepLabel } from "@/app/_components/step-label";
+import { EpisodePreview } from "../_components/episode-preview";
 import type { DrEpisode } from "@/lib/dr";
-import type { TranscriptionPhase } from "@/lib/transcription-client";
-import { EpisodePreview } from "../hvadsagdede/_components/episode-preview";
-import { StepLabel } from "../_components/step-label";
 
 export function DemoTranscriptionSetup({
   episode,
-  phase,
-  isWorking,
   isPlaying,
   onTogglePlayback,
-  onTranscribe,
+  onShowTranscript,
 }: {
   episode: DrEpisode;
-  phase: TranscriptionPhase;
-  isWorking: boolean;
   isPlaying: boolean;
   onTogglePlayback: () => void;
-  onTranscribe: () => void;
+  onShowTranscript: () => void;
 }) {
   return (
     <div className="border-t border-[#9f211e]/45">
@@ -37,25 +32,18 @@ export function DemoTranscriptionSetup({
               Demoen kræver ingen API-nøgle
             </p>
             <p className="mt-2 text-xs leading-5 text-[#6b655b]">
-              API-nøglen gemmes i denne browser. Den sendes kun ved
-              transskription og gemmes aldrig på vores server.
+              Demoen bruger en allerede færdig transskription og foretager
+              ingen AI-kald.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={onTranscribe}
-            disabled={isWorking}
-            className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition enabled:hover:bg-[#851b18] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30 disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={onShowTranscript}
+            className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#9f211e] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition hover:bg-[#851b18] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/30"
           >
-            <span>
-              {phase === "done"
-                ? "Kør demoen igen"
-                : "Simulér transskription"}
-            </span>
-            <span className="text-lg" aria-hidden="true">
-              →
-            </span>
+            <span>Se den færdige transskription</span>
+            <span className="text-lg" aria-hidden="true">↓</span>
           </button>
         </div>
       </div>

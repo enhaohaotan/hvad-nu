@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 
 export function ProductHeader({
   title,
+  secondaryText = "For dem, der stadig siger “hva’?”",
   secondaryColor = "#66745e",
   borderColor = "rgba(38,32,24,0.7)",
 }: {
   title: string;
+  secondaryText?: string;
   secondaryColor?: string;
   borderColor?: string;
 }) {
@@ -16,7 +18,7 @@ export function ProductHeader({
     >
       <span>{title}</span>
       <span className="text-right" style={{ color: secondaryColor }}>
-        For dem, der stadig siger “hva’?”
+        {secondaryText}
       </span>
     </header>
   );

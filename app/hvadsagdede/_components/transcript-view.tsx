@@ -36,6 +36,7 @@ export function TranscriptView({
   presetTranslations,
   availableTranslationLanguages,
   hasStickyTopBanner = false,
+  initialShowTranslation = false,
   onCopy,
   onDownload,
   onSeekTo,
@@ -51,11 +52,12 @@ export function TranscriptView({
   presetTranslations?: Partial<Record<TranslationLanguage, string[]>>;
   availableTranslationLanguages?: TranslationLanguage[];
   hasStickyTopBanner?: boolean;
+  initialShowTranslation?: boolean;
   onCopy: () => void;
   onDownload: () => void;
-  onSeekTo: (seconds: number) => void;
+  onSeekTo?: (seconds: number) => void;
 }) {
-  const [showTranslation, setShowTranslation] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(initialShowTranslation);
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguage>(
     () => {
       const initialLanguage = getInitialTranslationLanguage();
@@ -337,7 +339,7 @@ export function TranscriptView({
         className={`${showTranslation ? "transcript-with-translation leading-[2.45]" : "editorial-copy leading-[1.8]"} mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] text-[#332e27] sm:py-12 sm:text-[16px]`}
       >
         {displaySentences.map((sentence, index) => {
-          const isTimed = sentence.start !== undefined;
+          const isTimed = sentence.start !== undefined && Boolean(onSeekTo);
           const isActive = index === activeSentenceIndex;
           const content = showTranslation && selectedTranslations?.[index] ? (
             <ruby className="transcript-ruby">
@@ -361,12 +363,12 @@ export function TranscriptView({
               aria-current={isActive ? "true" : undefined}
               onClick={(event) => {
                 event.currentTarget.blur();
-                onSeekTo(sentence.start ?? 0);
+                onSeekTo?.(sentence.start ?? 0);
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  onSeekTo(sentence.start ?? 0);
+                  onSeekTo?.(sentence.start ?? 0);
                 }
               }}
               className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
