@@ -16,7 +16,18 @@ export function HvadSagdeDe() {
   const workspace = useTranscriptionWorkspace();
 
   return (
-    <main className="min-h-screen bg-[#9f211e] p-2.5 text-[#1d1915] sm:p-5 lg:p-7">
+    <main
+      onPointerUp={(event) => {
+        if (event.pointerType !== "mouse" && event.pointerType !== "pen") {
+          return;
+        }
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+          target.closest("button")?.blur();
+        }
+      }}
+      className="min-h-screen bg-[#9f211e] p-2.5 text-[#1d1915] sm:p-5 lg:p-7"
+    >
       <div className="editorial-sheet min-h-[calc(100vh-20px)] w-full bg-[#f3eddf] px-5 pb-8 pt-6 shadow-[0_24px_80px_rgba(43,8,6,0.28)] sm:min-h-[calc(100vh-40px)] sm:px-10 sm:pb-10 lg:min-h-[calc(100vh-56px)] lg:px-16 lg:pt-9">
         <ProductHeader title="Hva’ sagde de?" />
 
