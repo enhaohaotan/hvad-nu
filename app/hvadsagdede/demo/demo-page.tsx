@@ -155,7 +155,7 @@ export function DemoPage({ content }: { content: DemoContent }) {
           href="/hvadsagdede"
           className="shrink-0 underline decoration-current/40 underline-offset-4 transition hover:text-[#e8a19a] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          Gå til hovedsiden →
+          Til hovedsiden →
         </Link>
       </aside>
 
