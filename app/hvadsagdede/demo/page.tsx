@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import demoContent from "@/public/demo/tate-broedre-buret-inde.json";
+import demoContent from "@/public/demo/migrantkaos-i-ceuta.json";
 import { DemoPage } from "./demo-page";
 
 export const metadata: Metadata = {
@@ -13,12 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return (
-    <DemoPage
-      episodeTitle={demoContent.episodeTitle}
-      transcript={demoContent.transcript}
-      timedSentences={demoContent.timedSentences}
-      englishTranslations={demoContent.translations.en}
-    />
-  );
+  return <DemoPage content={demoContent} />;
 }

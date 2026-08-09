@@ -16,48 +16,33 @@ import type { DrEpisode } from "@/lib/dr";
 import type { TimedSentence } from "@/lib/timed-transcript";
 import type { TranscriptCacheEntry } from "@/lib/transcript-cache";
 
-const SOURCE_URL =
-  "https://www.dr.dk/lyd/special-radio/genstart/genstart-2026/tate-broedre-buret-inde-11802650181";
-
-const FALLBACK_EPISODE: DrEpisode = {
-  id: "demo-tate",
-  showTitle: "Genstart",
-  episodeTitle: "Tate-brødre buret inde",
-  description: "",
-  duration: "00:23:41",
-  publishedAt: "2026-08-04T03:00:00+02:00",
-  imageUrl: "",
-  audioUrl: "",
-  sourceUrl: SOURCE_URL,
-};
-
-const DEMO_HISTORY: TranscriptCacheEntry[] = [
-  {
-    audioUrl: "demo:tate-broedre-buret-inde",
-    model: "demo",
-    transcript: "",
-    cachedAt: Date.UTC(2026, 7, 5, 18, 49),
-    firstGeneratedAt: Date.UTC(2026, 7, 5, 18, 49),
-    sourceUrl: SOURCE_URL,
-    episodeTitle: FALLBACK_EPISODE.episodeTitle,
-    showTitle: FALLBACK_EPISODE.showTitle,
-    publishedAt: FALLBACK_EPISODE.publishedAt,
-    duration: FALLBACK_EPISODE.duration,
-  },
-];
-
-export function DemoPage({
-  episodeTitle,
-  transcript,
-  timedSentences,
-  englishTranslations,
-}: {
+type DemoContent = {
+  sourceUrl: string;
+  audioUrl: string;
   episodeTitle: string;
+  showTitle: string;
+  publishedAt: string;
+  duration: string;
   transcript: string;
   timedSentences: TimedSentence[];
-  englishTranslations: string[];
-}) {
-  const [episode, setEpisode] = useState(FALLBACK_EPISODE);
+  translations: {
+    en: string[];
+    zh: string[];
+  };
+};
+
+export function DemoPage({ content }: { content: DemoContent }) {
+  const [episode, setEpisode] = useState<DrEpisode>(() => ({
+    id: "demo-migrantkaos-i-ceuta",
+    showTitle: content.showTitle,
+    episodeTitle: content.episodeTitle,
+    description: "",
+    duration: content.duration,
+    publishedAt: content.publishedAt,
+    imageUrl: "",
+    audioUrl: content.audioUrl,
+    sourceUrl: content.sourceUrl,
+  }));
   const [isCopied, setIsCopied] = useState(false);
   const [isContactCopied, setIsContactCopied] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
@@ -72,7 +57,7 @@ export function DemoPage({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`/api/resolve?url=${encodeURIComponent(SOURCE_URL)}`, {
+    void fetch(`/api/resolve?url=${encodeURIComponent(content.sourceUrl)}`, {
       signal: controller.signal,
       cache: "no-store",
     })
@@ -87,7 +72,22 @@ export function DemoPage({
       controller.abort();
       if (copyFeedbackRef.current) clearTimeout(copyFeedbackRef.current);
     };
-  }, []);
+  }, [content.sourceUrl]);
+
+  const demoHistory: TranscriptCacheEntry[] = [
+    {
+      audioUrl: content.audioUrl,
+      model: "demo",
+      transcript: "",
+      cachedAt: Date.UTC(2026, 7, 9, 0, 0),
+      firstGeneratedAt: Date.UTC(2026, 7, 9, 0, 0),
+      sourceUrl: content.sourceUrl,
+      episodeTitle: content.episodeTitle,
+      showTitle: content.showTitle,
+      publishedAt: content.publishedAt,
+      duration: content.duration,
+    },
+  ];
 
   function showTranscript() {
     transcriptRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -120,7 +120,7 @@ export function DemoPage({
   }
 
   async function copyTranscript() {
-    await navigator.clipboard.writeText(transcript);
+    await navigator.clipboard.writeText(content.transcript);
     setIsCopied(true);
     if (copyFeedbackRef.current) clearTimeout(copyFeedbackRef.current);
     copyFeedbackRef.current = setTimeout(() => setIsCopied(false), 2000);
@@ -128,11 +128,11 @@ export function DemoPage({
 
   function downloadTranscript() {
     const href = URL.createObjectURL(
-      new Blob([transcript], { type: "text/plain;charset=utf-8" }),
+      new Blob([content.transcript], { type: "text/plain;charset=utf-8" }),
     );
     const link = document.createElement("a");
     link.href = href;
-    link.download = "tate-broedre-buret-inde.txt";
+    link.download = "migrantkaos-i-ceuta.txt";
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -172,11 +172,11 @@ export function DemoPage({
               aria-label="Færdig demo-transskription"
             >
               <EpisodePicker
-                url={SOURCE_URL}
+                url={content.sourceUrl}
                 phase="done"
                 isWorking={false}
-                cachedEpisodes={DEMO_HISTORY}
-                latestSuggestion={{ referenceUrl: SOURCE_URL, episode }}
+                cachedEpisodes={demoHistory}
+                latestSuggestion={{ referenceUrl: content.sourceUrl, episode }}
                 latestGenstartEpisode={episode}
                 suggestionsReady
                 readOnly
@@ -197,7 +197,7 @@ export function DemoPage({
                 phase="done"
                 message="Episoden er transskriberet — den færdige tekst vises nedenfor"
                 errorDebug=""
-                episodeUrl={SOURCE_URL}
+                episodeUrl={content.sourceUrl}
                 progress={100}
                 isWorking={false}
                 onCancel={() => undefined}
@@ -206,16 +206,16 @@ export function DemoPage({
 
             <div ref={transcriptRef}>
               <TranscriptView
-                episodeTitle={episodeTitle}
-                transcript={transcript}
-                timedSentences={timedSentences}
+                episodeTitle={content.episodeTitle}
+                transcript={content.transcript}
+                timedSentences={content.timedSentences}
                 currentTime={currentTime}
                 isPlayerOpen={isPlayerOpen}
                 apiKey=""
                 phase="done"
                 isCopied={isCopied}
-                presetTranslations={{ en: englishTranslations }}
-                availableTranslationLanguages={["en"]}
+                presetTranslations={content.translations}
+                availableTranslationLanguages={["en", "zh"]}
                 hasStickyTopBanner
                 initialShowTranslation
                 onCopy={() => void copyTranscript()}
