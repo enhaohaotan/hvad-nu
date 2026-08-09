@@ -10,6 +10,7 @@ type SetupStepsProps = {
   isApiKeySaved: boolean;
   profile: LearnerProfile;
   session: LearningSession | null;
+  todayLabel: string;
   onApiKeyChange: (value: string) => void;
   onForgetApiKey: () => void;
   onProfileChange: (profile: LearnerProfile) => void;
@@ -22,6 +23,7 @@ export function SetupSteps({
   isApiKeySaved,
   profile,
   session,
+  todayLabel,
   onApiKeyChange,
   onForgetApiKey,
   onProfileChange,
@@ -110,8 +112,8 @@ export function SetupSteps({
               Gem din API-nøgle i trin 01 for at fortsætte
             </p>
           )}
-          <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#70847e]">
-            MVP-demo · intet API-kald
+          <p className="mt-2 capitalize text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4d6e65]">
+            {todayLabel} · ca. 25 minutter
           </p>
         </div>
       </div>

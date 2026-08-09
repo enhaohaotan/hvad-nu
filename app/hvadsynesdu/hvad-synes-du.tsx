@@ -36,6 +36,7 @@ export function HvadSynesDu() {
             isApiKeySaved={learning.isApiKeySaved}
             profile={learning.profile}
             session={session}
+            todayLabel={learning.todayLabel}
             onApiKeyChange={learning.updateApiKey}
             onForgetApiKey={learning.forgetApiKey}
             onProfileChange={learning.saveProfile}

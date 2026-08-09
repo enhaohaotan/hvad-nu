@@ -18,6 +18,7 @@ import type {
 
 export function useLearningSession() {
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [todayLabel, setTodayLabel] = useState("I dag");
   const [session, setSession] = useState<LearningSession | null>(null);
   const [history, setHistory] = useState<LearningSession[]>([]);
   const [expressions, setExpressions] = useState<SavedExpression[]>([]);
@@ -76,6 +77,14 @@ export function useLearningSession() {
       setProfile(storedProfile ?? DEFAULT_PROFILE);
       setApiKey(storedApiKey);
       setIsApiKeySaved(Boolean(storedApiKey));
+      setTodayLabel(
+        new Intl.DateTimeFormat("da-DK", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(new Date()),
+      );
       setHasLoaded(true);
     });
 
@@ -354,6 +363,7 @@ export function useLearningSession() {
     setDraft,
     startDiscussion,
     startToday,
+    todayLabel,
     updateApiKey,
     forgetApiKey,
   };
