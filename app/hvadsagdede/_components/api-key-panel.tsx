@@ -65,7 +65,23 @@ export function ApiKeyPanel({
         gemmes aldrig på vores server.
       </p>
       <details className="group mt-4 border-t border-[#29231b]/15 pt-2">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] transition hover:text-[#9f211e] [&::-webkit-details-marker]:hidden">
+        <summary
+          aria-disabled={isWorking}
+          tabIndex={isWorking ? -1 : undefined}
+          onClick={(event) => {
+            if (isWorking) event.preventDefault();
+          }}
+          onKeyDown={(event) => {
+            if (isWorking && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+            }
+          }}
+          className={`inline-flex list-none items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] transition [&::-webkit-details-marker]:hidden ${
+            isWorking
+              ? "cursor-default opacity-55"
+              : "cursor-pointer hover:text-[#9f211e]"
+          }`}
+        >
           <span
             aria-hidden="true"
             className="h-0 w-0 shrink-0 border-y-[3px] border-l-[5px] border-y-transparent border-l-current transition-transform group-open:rotate-90"
@@ -74,7 +90,7 @@ export function ApiKeyPanel({
             Vælg transskriptionsmetode og se estimeret OpenAI-pris · {selectedMode.label}
           </span>
         </summary>
-        <fieldset className="mt-4">
+        <fieldset className="mt-4" disabled={isWorking}>
           <legend className="sr-only">
             Vælg transskriptionsmetode
           </legend>
@@ -84,18 +100,23 @@ export function ApiKeyPanel({
               return (
                 <label
                   key={mode}
-                  className={`grid cursor-pointer gap-x-4 gap-y-1 border-b px-4 py-3 transition last:border-b-0 sm:grid-cols-[minmax(230px,auto)_1fr] sm:items-center ${
+                  className={`grid gap-x-4 gap-y-1 border-b px-4 py-3 transition last:border-b-0 sm:grid-cols-[minmax(230px,auto)_1fr] sm:items-center ${
                     isSelected
                       ? "border-[#29231b] bg-[#29231b] text-[#f8f2e6]"
-                      : "border-[#29231b]/20 hover:bg-[#eee7da]"
-                  } ${isWorking ? "cursor-not-allowed opacity-55" : ""}`}
+                      : `border-[#29231b]/20 ${
+                          isWorking ? "" : "hover:bg-[#eee7da]"
+                        }`
+                  } ${
+                    isWorking
+                      ? "cursor-default opacity-55"
+                      : "cursor-pointer"
+                  }`}
                 >
                   <input
                     type="radio"
                     name="transcription-mode"
                     value={mode}
                     checked={isSelected}
-                    disabled={isWorking}
                     onChange={() =>
                       onTranscriptionModeChange(mode as TranscriptionMode)
                     }
