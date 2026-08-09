@@ -46,8 +46,20 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). The root route redirects
+to Hva’ sagde de?.
 No environment variables are required.
+
+## Routes
+
+- `/hvadsagdede` — Hva’ sagde de?, the DR LYD transcription product.
+- `/hvadsagdede/demo` — a complete, ready-to-read demo with the timed
+  transcript of “Migrantkaos i Ceuta” and Chinese and English translations.
+- `/hvadsynesdu` — Hva’ synes du?, the independent Danish reading and written
+  discussion product. Its current MVP presents the interface without making AI
+  requests.
+- `/` — redirects to `/hvadsagdede`.
+- `/demo` — legacy route that permanently redirects to `/hvadsagdede/demo`.
 
 ## Limitations
 
