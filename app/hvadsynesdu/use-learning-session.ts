@@ -18,13 +18,13 @@ import type {
 
 export function useLearningSession() {
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [todayLabel, setTodayLabel] = useState("I dag");
   const [session, setSession] = useState<LearningSession | null>(null);
   const [history, setHistory] = useState<LearningSession[]>([]);
   const [expressions, setExpressions] = useState<SavedExpression[]>([]);
   const [mistakes, setMistakes] = useState<SavedMistake[]>([]);
   const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
   const [apiKey, setApiKey] = useState("");
+  const [isApiKeySaved, setIsApiKeySaved] = useState(false);
   const [draft, setDraft] = useState("");
   const [isReplying, setIsReplying] = useState(false);
   const [isContactCopied, setIsContactCopied] = useState(false);
@@ -75,13 +75,7 @@ export function useLearningSession() {
       setMistakes(storedMistakes.slice(0, STORAGE_LIMITS.mistakes));
       setProfile(storedProfile ?? DEFAULT_PROFILE);
       setApiKey(storedApiKey);
-      setTodayLabel(
-        new Intl.DateTimeFormat("da-DK", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        }).format(new Date()),
-      );
+      setIsApiKeySaved(Boolean(storedApiKey));
       setHasLoaded(true);
     });
 
@@ -109,6 +103,14 @@ export function useLearningSession() {
 
   function startToday() {
     if (!apiKey.trim()) return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.apiKey, apiKey.trim());
+    } catch {
+      // The key remains available for this visit when storage is unavailable.
+    }
+    setApiKey(apiKey.trim());
+    setIsApiKeySaved(true);
+
     const date = toDateKey(new Date());
     const previous = history.find((item) => item.date === date);
     if (previous) {
@@ -302,11 +304,15 @@ export function useLearningSession() {
     }
   }
 
-  function saveApiKey(value: string) {
+  function updateApiKey(value: string) {
     setApiKey(value);
+  }
+
+  function forgetApiKey() {
+    setApiKey("");
+    setIsApiKeySaved(false);
     try {
-      if (value) localStorage.setItem(STORAGE_KEYS.apiKey, value);
-      else localStorage.removeItem(STORAGE_KEYS.apiKey);
+      localStorage.removeItem(STORAGE_KEYS.apiKey);
     } catch {
       // The field remains usable for this visit.
     }
@@ -332,13 +338,13 @@ export function useLearningSession() {
     expressions,
     hasLoaded,
     history,
+    isApiKeySaved,
     isContactCopied,
     isReplying,
     mistakes,
     moveToThinking,
     profile,
     progress,
-    saveApiKey,
     saveExpression,
     saveNotice,
     saveProfile,
@@ -348,6 +354,7 @@ export function useLearningSession() {
     setDraft,
     startDiscussion,
     startToday,
-    todayLabel,
+    updateApiKey,
+    forgetApiKey,
   };
 }

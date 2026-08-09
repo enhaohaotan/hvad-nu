@@ -33,10 +33,11 @@ export function HvadSynesDu() {
           <SetupSteps
             apiKey={learning.apiKey}
             hasLoaded={learning.hasLoaded}
+            isApiKeySaved={learning.isApiKeySaved}
             profile={learning.profile}
             session={session}
-            todayLabel={learning.todayLabel}
-            onApiKeyChange={learning.saveApiKey}
+            onApiKeyChange={learning.updateApiKey}
+            onForgetApiKey={learning.forgetApiKey}
             onProfileChange={learning.saveProfile}
             onStart={learning.startToday}
           />
