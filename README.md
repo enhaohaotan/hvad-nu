@@ -3,7 +3,7 @@
 Turn a public DR LYD podcast episode into a readable Danish transcript with
 OpenAI Speech-to-Text.
 
-[Try Hva’ sagde de?](https://havdsagdede.tanenhao.com)
+[Visit the product suite](https://hvadnu.tanenhao.com)
 
 ## What it does
 
@@ -59,7 +59,6 @@ No environment variables are required.
   discussion product. Its current MVP presents the interface without making AI
   requests.
 - `/` — redirects to `/hvadsagdede`.
-- `/demo` — legacy route that permanently redirects to `/hvadsagdede/demo`.
 
 ## Limitations
 
