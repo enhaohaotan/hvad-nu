@@ -359,7 +359,10 @@ export function TranscriptView({
               role="button"
               tabIndex={0}
               aria-current={isActive ? "true" : undefined}
-              onClick={() => onSeekTo(sentence.start ?? 0)}
+              onClick={(event) => {
+                event.currentTarget.blur();
+                onSeekTo(sentence.start ?? 0);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
