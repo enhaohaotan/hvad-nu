@@ -148,12 +148,14 @@ export function DemoPage({ content }: { content: DemoContent }) {
   return (
     <>
       <aside className="sticky top-0 z-50 flex min-h-11 items-center justify-between gap-4 bg-[#1d1915] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#f8f2e6] sm:px-7 sm:text-xs">
-        <span>Demo · Ingen AI-kald eller betaling</span>
+        <span>
+          Demo · Ingen AI-kald eller betaling · Flere funktioner på hovedsiden
+        </span>
         <Link
           href="/hvadsagdede"
           className="shrink-0 underline decoration-current/40 underline-offset-4 transition hover:text-[#e8a19a] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          Til produktet →
+          Gå til hovedsiden →
         </Link>
       </aside>
 
