@@ -1,7 +1,5 @@
 export const DAILY_READING = {
   title: "Når man flytter til et nyt land – hvornår føler man sig egentlig hjemme?",
-  subtitle:
-    "At kunne fungere i et land er ikke nødvendigvis det samme som at føle sig hjemme der.",
   metadata: ["Samfund", "10 min. læsning", "B2–C1"],
   paragraphs: [
     "At flytte til et andet land bliver ofte beskrevet som en praktisk proces. Man finder en bolig, får styr på papirarbejdet, lærer transportsystemet at kende og opdager efterhånden, hvor man køber dagligvarer. Efter nogle måneder kan hverdagen begynde at fungere næsten automatisk. Man ved, hvilken bus man skal tage, hvordan man bestiller tid hos lægen, og hvilken kø i supermarkedet der plejer at gå hurtigst.",

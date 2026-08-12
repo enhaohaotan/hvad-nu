@@ -27,9 +27,8 @@ export function ReadingSection({
       phase="done"
       isCopied={isCopied}
       variant="discussion"
-      eyebrow="Dagens læsning"
+      eyebrow="01 · Dagens læsning"
       metadata={DAILY_READING.metadata}
-      subtitle={DAILY_READING.subtitle}
       footerNote="AI-oversættelser kan indeholde fejl. Sammenlign med den danske tekst, hvis noget virker forkert."
       onCopy={onCopy}
       onDownload={onDownload}

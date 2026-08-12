@@ -1,4 +1,5 @@
 import { DAILY_DISCUSSION } from "../daily-content";
+import { EditorialSectionHeader } from "@/app/_components/editorial-section-header";
 
 type DiscussionSectionProps = {
   draft: string;
@@ -11,24 +12,24 @@ export function DiscussionSection({
 }: DiscussionSectionProps) {
   return (
     <section
-      className="border-b-2 border-[#0b4a47] py-10 sm:py-14"
+      className="mt-12 border-y-4 border-[#0b4a47] pb-10 pt-7 sm:mt-16 sm:pb-14 sm:pt-9"
       aria-labelledby="discussion-title"
     >
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#d9542b]">
-        02 · Dagens samtaleemne
-      </p>
-      <h2
-        id="discussion-title"
-        className="editorial-serif mt-3 max-w-4xl text-4xl leading-none tracking-[-0.035em] sm:text-5xl lg:text-6xl"
-      >
-        {DAILY_DISCUSSION.title}
-      </h2>
-      <p className="mt-6 max-w-3xl text-sm leading-6 text-[#526760] sm:text-base sm:leading-7">
-        {DAILY_DISCUSSION.introduction}
-      </p>
+      <div id="discussion-title">
+        <EditorialSectionHeader
+          eyebrow="02 · Dagens samtaleemne"
+          title={DAILY_DISCUSSION.title}
+          variant="discussion"
+        />
+      </div>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)] lg:gap-16">
-        <section aria-labelledby="expressions-title">
+      <div className="mx-auto max-w-[880px] py-9 sm:py-12">
+        <p className="text-[15px] leading-[1.8] text-[#332e27] sm:text-[16px]">
+          {DAILY_DISCUSSION.introduction}
+        </p>
+
+        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)] lg:gap-16">
+          <section aria-labelledby="expressions-title">
           <h3
             id="expressions-title"
             className="border-b border-[#0b4a47]/35 pb-3 text-[10px] font-bold uppercase tracking-[0.2em]"
@@ -47,9 +48,9 @@ export function DiscussionSection({
               </div>
             ))}
           </dl>
-        </section>
+          </section>
 
-        <section aria-labelledby="questions-title">
+          <section aria-labelledby="questions-title">
           <h3
             id="questions-title"
             className="border-b border-[#0b4a47]/35 pb-3 text-[10px] font-bold uppercase tracking-[0.2em]"
@@ -67,10 +68,10 @@ export function DiscussionSection({
               </li>
             ))}
           </ol>
-        </section>
-      </div>
+          </section>
+        </div>
 
-      <div className="mt-10 border-2 border-[#0b4a47] bg-[#eee5d3]">
+        <div className="mt-10 border-2 border-[#0b4a47] bg-[#eee5d3]">
         <label
           htmlFor="discussion-answer"
           className="block border-b border-[#0b4a47]/35 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#415d56] sm:px-6"
@@ -88,6 +89,7 @@ export function DiscussionSection({
         <p className="border-t border-[#0b4a47]/25 px-4 py-3 text-right text-[9px] uppercase tracking-[0.12em] text-[#788781] sm:px-6">
           {draft.length}/3000
         </p>
+        </div>
       </div>
     </section>
   );
