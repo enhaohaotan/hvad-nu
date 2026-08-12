@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_PROFILE,
   QUESTIONS,
@@ -12,7 +12,6 @@ import type {
   ChatMessage,
   LearnerProfile,
   LearningSession,
-  SavedExpression,
   SavedMistake,
 } from "./types";
 
@@ -21,8 +20,7 @@ export function useLearningSession() {
   const [todayLabel, setTodayLabel] = useState("I dag");
   const [session, setSession] = useState<LearningSession | null>(null);
   const [history, setHistory] = useState<LearningSession[]>([]);
-  const [expressions, setExpressions] = useState<SavedExpression[]>([]);
-  const [mistakes, setMistakes] = useState<SavedMistake[]>([]);
+  const [, setMistakes] = useState<SavedMistake[]>([]);
   const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
   const [apiKey, setApiKey] = useState("");
   const [isApiKeySaved, setIsApiKeySaved] = useState(false);
@@ -34,35 +32,14 @@ export function useLearningSession() {
   const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionCounterRef = useRef(0);
 
-  const progress = session?.completedAt
-    ? 100
-    : session?.phase === "reading"
-      ? 20
-      : session?.phase === "thinking"
-        ? 40
-        : session?.phase === "discussing"
-          ? 65
-          : session
-            ? 88
-            : 0;
-
-  const savedExpressionNames = useMemo(
-    () => new Set(expressions.map((item) => item.expression)),
-    [expressions],
-  );
-
   useEffect(() => {
     let storedHistory: LearningSession[] = [];
-    let storedExpressions: SavedExpression[] = [];
     let storedMistakes: SavedMistake[] = [];
     let storedProfile: LearnerProfile | null = null;
     let storedApiKey = "";
 
     try {
       storedHistory = parseArray(localStorage.getItem(STORAGE_KEYS.history));
-      storedExpressions = parseArray(
-        localStorage.getItem(STORAGE_KEYS.expressions),
-      );
       storedMistakes = parseArray(localStorage.getItem(STORAGE_KEYS.mistakes));
       storedProfile = parseObject(localStorage.getItem(STORAGE_KEYS.profile));
       storedApiKey = localStorage.getItem(STORAGE_KEYS.apiKey) ?? "";
@@ -72,7 +49,6 @@ export function useLearningSession() {
 
     const frame = requestAnimationFrame(() => {
       setHistory(storedHistory.slice(0, STORAGE_LIMITS.sessions));
-      setExpressions(storedExpressions.slice(0, STORAGE_LIMITS.expressions));
       setMistakes(storedMistakes.slice(0, STORAGE_LIMITS.mistakes));
       setProfile(storedProfile ?? DEFAULT_PROFILE);
       setApiKey(storedApiKey);
@@ -137,7 +113,6 @@ export function useLearningSession() {
       messages: [],
       updatedAt: actionCounterRef.current,
     });
-    markNewestExpressionAsReused();
   }
 
   function moveToThinking() {
@@ -215,67 +190,24 @@ export function useLearningSession() {
         updatedAt: Date.now(),
       });
       if (hasCorrection) recordMistake("enig med idéen", "enig i idéen");
-      saveExpression(
-        "Det afgørende er, om …",
-        "bruges til at fremhæve det vigtigste kriterium",
-        "Feedback fra dagens samtale",
-      );
       setIsReplying(false);
     }, 650);
   }
 
   function completeSession() {
     if (!session) return;
+    actionCounterRef.current += 1;
+    const completionSequence = Math.max(
+      session.updatedAt + 1,
+      actionCounterRef.current,
+    );
     persistHistory({
       ...session,
       phase: "feedback",
-      completedAt: Date.now(),
-      updatedAt: Date.now(),
+      completedAt: completionSequence,
+      updatedAt: completionSequence,
     });
     showSaveNotice("Dagens læring er gemt til en senere session.", 2600);
-  }
-
-  function saveExpression(
-    expression: string,
-    meaning: string,
-    source = "Dagens tekst",
-  ) {
-    setExpressions((current) => {
-      if (current.some((item) => item.expression === expression)) return current;
-      const next = [
-        {
-          id: `expression-${Date.now()}-${expression}`,
-          expression,
-          meaning,
-          source,
-          savedAt: Date.now(),
-          timesReused: 0,
-        },
-        ...current,
-      ].slice(0, STORAGE_LIMITS.expressions);
-      try {
-        localStorage.setItem(STORAGE_KEYS.expressions, JSON.stringify(next));
-      } catch {
-        // Keep the expression in memory if storage is unavailable.
-      }
-      return next;
-    });
-    showSaveNotice(`“${expression}” er gemt.`, 1900);
-  }
-
-  function markNewestExpressionAsReused() {
-    setExpressions((current) => {
-      if (!current.length) return current;
-      const next = current.map((item, index) =>
-        index === 0 ? { ...item, timesReused: item.timesReused + 1 } : item,
-      );
-      try {
-        localStorage.setItem(STORAGE_KEYS.expressions, JSON.stringify(next));
-      } catch {
-        // The reuse count can remain in memory when storage is unavailable.
-      }
-      return next;
-    });
   }
 
   function recordMistake(pattern: string, correction: string) {
@@ -344,20 +276,15 @@ export function useLearningSession() {
     copyContactEmail,
     discussionRef,
     draft,
-    expressions,
     hasLoaded,
     history,
     isApiKeySaved,
     isContactCopied,
     isReplying,
-    mistakes,
     moveToThinking,
     profile,
-    progress,
-    saveExpression,
     saveNotice,
     saveProfile,
-    savedExpressionNames,
     sendMessage,
     session,
     setDraft,

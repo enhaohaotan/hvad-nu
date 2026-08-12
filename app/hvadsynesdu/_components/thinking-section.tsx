@@ -1,17 +1,13 @@
 import { DISCUSSION_EXPRESSIONS, QUESTIONS } from "../constants";
-import type { LearningSession, SaveExpression } from "../types";
+import type { LearningSession } from "../types";
 
 type ThinkingSectionProps = {
-  onSaveExpression: SaveExpression;
   onStartDiscussion: () => void;
-  savedExpressionNames: Set<string>;
   session: LearningSession;
 };
 
 export function ThinkingSection({
-  onSaveExpression,
   onStartDiscussion,
-  savedExpressionNames,
   session,
 }: ThinkingSectionProps) {
   return (
@@ -40,21 +36,18 @@ export function ThinkingSection({
         <div className="border-y border-[#0b4a47]/45 bg-[#eee6d7]/55 p-5 sm:p-8 lg:border">
           <div className="flex items-center justify-between gap-4 border-b border-[#0b4a47]/35 pb-3">
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em]">Vendinger til samtalen</h3>
-            <span className="text-[9px] uppercase tracking-[0.12em] text-[#6a7b75]">Tryk for at gemme</span>
           </div>
           <div className="divide-y divide-[#0b4a47]/20">
             {DISCUSSION_EXPRESSIONS.map(([expression, meaning]) => (
-              <button
-                type="button"
+              <div
                 key={expression}
-                onClick={() => onSaveExpression(expression, meaning, "Dagens samtale")}
-                className="group grid w-full gap-1 py-4 text-left sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-5"
+                className="grid w-full gap-1 py-4 text-left sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-5"
               >
-                <span className="editorial-serif text-xl leading-6 transition group-hover:text-[#d9542b]">{expression}</span>
+                <span className="editorial-serif text-xl leading-6">{expression}</span>
                 <span className="text-[10px] leading-4 text-[#687a74] sm:max-w-44 sm:text-right">
-                  {savedExpressionNames.has(expression) ? "Gemt ✓" : meaning}
+                  {meaning}
                 </span>
-              </button>
+              </div>
             ))}
           </div>
           {session.phase === "thinking" && (

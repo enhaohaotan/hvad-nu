@@ -70,24 +70,6 @@ input[type="range"]:disabled {
   line-height: 0.72;
 }
 
-.discussion-expression {
-  display: inline;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px dashed #d9542b;
-  background: rgba(217, 84, 43, 0.08);
-  color: #a93c20;
-  font: inherit;
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.discussion-expression:hover,
-.discussion-expression:focus-visible {
-  background: rgba(217, 84, 43, 0.18);
-  color: #0b4a47;
-  outline: none;
-}
-
 .discussion-product ::selection {
   background: rgba(11, 74, 71, 0.18);
 }

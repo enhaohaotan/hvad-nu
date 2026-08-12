@@ -7,15 +7,6 @@ export type ChatMessage = {
   question?: string;
 };
 
-export type SavedExpression = {
-  id: string;
-  expression: string;
-  meaning: string;
-  source: string;
-  savedAt: number;
-  timesReused: number;
-};
-
 export type SavedMistake = {
   id: string;
   pattern: string;
@@ -39,9 +30,3 @@ export type LearnerProfile = {
   level: string;
   updatedAt: number;
 };
-
-export type SaveExpression = (
-  expression: string,
-  meaning: string,
-  source?: string,
-) => void;

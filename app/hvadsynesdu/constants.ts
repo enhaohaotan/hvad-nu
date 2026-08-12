@@ -2,7 +2,6 @@ import type { LearnerProfile } from "./types";
 
 export const STORAGE_KEYS = {
   history: "hvad-synes-du:sessions.v1",
-  expressions: "hvad-synes-du:expressions.v1",
   mistakes: "hvad-synes-du:mistakes.v1",
   profile: "hvad-synes-du:profile.v1",
   apiKey: "hvad-synes-du:openai-api-key",
@@ -11,7 +10,6 @@ export const STORAGE_KEYS = {
 export const STORAGE_LIMITS = {
   sessions: 14,
   messagesPerSession: 80,
-  expressions: 60,
   mistakes: 30,
 } as const;
 

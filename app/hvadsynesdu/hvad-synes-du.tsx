@@ -1,7 +1,6 @@
 "use client";
 
 import { DiscussionSection } from "./_components/discussion-section";
-import { LibraryPanel } from "./_components/library-panel";
 import { ReadingSection } from "./_components/reading-section";
 import { SetupSteps } from "./_components/setup-steps";
 import { ThinkingSection } from "./_components/thinking-section";
@@ -46,17 +45,12 @@ export function HvadSynesDu() {
           {session && (
             <>
               <ReadingSection
-                expressions={learning.expressions}
                 onContinue={learning.moveToThinking}
-                onSaveExpression={learning.saveExpression}
-                progress={learning.progress}
                 session={session}
               />
               {session.phase !== "reading" && (
                 <ThinkingSection
-                  onSaveExpression={learning.saveExpression}
                   onStartDiscussion={learning.startDiscussion}
-                  savedExpressionNames={learning.savedExpressionNames}
                   session={session}
                 />
               )}
@@ -83,12 +77,6 @@ export function HvadSynesDu() {
             {learning.saveNotice}
           </p>
         )}
-
-        <LibraryPanel
-          expressions={learning.expressions}
-          mistakes={learning.mistakes}
-          history={learning.history}
-        />
 
         <ProductFooter
           borderColor="rgba(25,59,54,0.7)"
