@@ -27,7 +27,13 @@ export function EditorialSectionHeader({
         {eyebrow}
       </p>
       {title && (
-        <h2 className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl">
+        <h2
+          className={`editorial-serif mt-2 text-3xl leading-none tracking-[-0.035em] sm:text-5xl ${
+            isDiscussion
+              ? "max-w-[1400px] [text-wrap:balance]"
+              : "max-w-[900px]"
+          }`}
+        >
           {title}
         </h2>
       )}
