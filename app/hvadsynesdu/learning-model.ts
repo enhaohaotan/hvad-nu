@@ -5,8 +5,8 @@ export const LEARNING_MODELS = {
     description: "Hurtigst og billigst. God til hyppig brug, men kan give mindre nuanceret tekst og feedback.",
     inputPerMillionUsd: 0.2,
     outputPerMillionUsd: 1.2,
-    generationDkk: [0.03, 0.15],
-    feedbackDkk: [0.02, 0.1],
+    generationDkk: [0.03, 0.05],
+    feedbackDkk: [0.01, 0.03],
   },
   "gpt-5.6-terra": {
     label: "Terra",
@@ -14,8 +14,8 @@ export const LEARNING_MODELS = {
     description: "Bedste balance mellem naturligt dansk, grundig feedback og pris.",
     inputPerMillionUsd: 2,
     outputPerMillionUsd: 12,
-    generationDkk: [0.25, 0.8],
-    feedbackDkk: [0.15, 0.5],
+    generationDkk: [0.25, 0.45],
+    feedbackDkk: [0.12, 0.3],
   },
   "gpt-5.6-sol": {
     label: "Sol",
@@ -23,8 +23,8 @@ export const LEARNING_MODELS = {
     description: "Højeste kvalitet til krævende tekster og sproglig vurdering, men væsentligt dyrere.",
     inputPerMillionUsd: 5,
     outputPerMillionUsd: 30,
-    generationDkk: [0.65, 2],
-    feedbackDkk: [0.4, 1.25],
+    generationDkk: [0.63, 1.13],
+    feedbackDkk: [0.3, 0.75],
   },
 } as const;
 
