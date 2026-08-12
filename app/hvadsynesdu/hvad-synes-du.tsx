@@ -53,6 +53,10 @@ export function HvadSynesDu() {
                 draft={learning.draft}
                 onDraftChange={learning.updateDraft}
               />
+              <p className="mx-auto max-w-[880px] border-t border-[#29231b]/20 pb-2 pt-3 text-[12px] leading-[1.8] text-[#70695f] sm:text-[13px]">
+                Dagens tekst, samtaleemne, udtryk og spørgsmål er genereret af
+                AI og kan indeholde fejl.
+              </p>
             </>
           )}
         </section>

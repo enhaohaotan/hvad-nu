@@ -29,7 +29,7 @@ export function ReadingSection({
       variant="discussion"
       eyebrow="01 · Dagens læsning"
       metadata={DAILY_READING.metadata}
-      footerNote="AI-oversættelser kan indeholde fejl. Sammenlign med den danske tekst, hvis noget virker forkert."
+      footerNote={null}
       onCopy={onCopy}
       onDownload={onDownload}
     />
