@@ -76,7 +76,7 @@ export function ApiKeyPanel({
               event.preventDefault();
             }
           }}
-          className={`inline-flex list-none items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] transition [&::-webkit-details-marker]:hidden ${
+          className={`inline-flex list-none items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/25 [&::-webkit-details-marker]:hidden ${
             isWorking
               ? "cursor-default opacity-55"
               : "cursor-pointer hover:text-[#9f211e]"

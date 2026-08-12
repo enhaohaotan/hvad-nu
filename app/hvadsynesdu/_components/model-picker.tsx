@@ -15,7 +15,7 @@ export function ModelPicker({ model, disabled, onChange }: {
         onKeyDown={(event) => {
           if (disabled && (event.key === "Enter" || event.key === " ")) event.preventDefault();
         }}
-        className={`inline-flex list-none items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] transition [&::-webkit-details-marker]:hidden ${disabled ? "cursor-default opacity-55" : "cursor-pointer hover:text-[#0b4a47]"}`}
+        className={`inline-flex list-none items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-[#575147] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a47]/25 [&::-webkit-details-marker]:hidden ${disabled ? "cursor-default opacity-55" : "cursor-pointer hover:text-[#0b4a47]"}`}
       >
         <span aria-hidden="true" className="h-0 w-0 shrink-0 border-y-[3px] border-l-[5px] border-y-transparent border-l-current transition-transform group-open:rotate-90" />
         <span className="underline decoration-current/40 underline-offset-4">
