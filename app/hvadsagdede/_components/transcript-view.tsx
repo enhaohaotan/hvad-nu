@@ -39,6 +39,8 @@ export function TranscriptView({
   initialShowTranslation = false,
   variant = "transcription",
   eyebrow = "Transskriptionen",
+  metadata,
+  subtitle,
   footerNote = "AI kan tage fejl. Sammenlign med lydsporet, hvis noget virker forkert.",
   onCopy,
   onDownload,
@@ -58,6 +60,8 @@ export function TranscriptView({
   initialShowTranslation?: boolean;
   variant?: "transcription" | "discussion";
   eyebrow?: string;
+  metadata?: readonly string[];
+  subtitle?: string;
   footerNote?: string | null;
   onCopy: () => void;
   onDownload: () => void;
@@ -227,12 +231,31 @@ export function TranscriptView({
         >
           {eyebrow}
         </p>
+        {metadata?.length && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#5f756e] sm:text-[11px]">
+            {metadata.map((item, index) => (
+              <span key={item} className="contents">
+                {index > 0 && <span aria-hidden="true">·</span>}
+                <span>{item}</span>
+              </span>
+            ))}
+          </div>
+        )}
         <h2
           id="transcript-title"
           className="editorial-serif mt-2 max-w-[900px] text-3xl leading-none tracking-[-0.035em] sm:text-5xl"
         >
           {episodeTitle}
         </h2>
+        {subtitle && (
+          <p
+            className={`editorial-serif mt-5 max-w-2xl border-l-2 pl-4 text-lg italic leading-7 text-[#4f655f] sm:text-xl sm:leading-8 ${
+              isDiscussion ? "border-[#d9542b]" : "border-[#9f211e]"
+            }`}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
 
       {phase === "done" && (

@@ -28,6 +28,8 @@ export function ReadingSection({
       isCopied={isCopied}
       variant="discussion"
       eyebrow="Dagens læsning"
+      metadata={DAILY_READING.metadata}
+      subtitle={DAILY_READING.subtitle}
       footerNote="AI-oversættelser kan indeholde fejl. Sammenlign med den danske tekst, hvis noget virker forkert."
       onCopy={onCopy}
       onDownload={onDownload}
