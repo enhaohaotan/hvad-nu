@@ -3,6 +3,7 @@
 import { DiscussionSection } from "./_components/discussion-section";
 import { ReadingSection } from "./_components/reading-section";
 import { SetupSteps } from "./_components/setup-steps";
+import { SessionHistory } from "./_components/session-history";
 import { useLearningSession } from "./use-learning-session";
 import {
   ProductFooter,
@@ -33,25 +34,36 @@ export function HvadSynesDu() {
             hasLoaded={learning.hasLoaded}
             isApiKeySaved={learning.isApiKeySaved}
             profile={learning.profile}
-            session={session}
+            todayCount={learning.todayCount}
+            isGenerating={learning.isGenerating}
             todayLabel={learning.todayLabel}
             onApiKeyChange={learning.updateApiKey}
             onForgetApiKey={learning.forgetApiKey}
-            onProfileChange={learning.saveProfile}
-            onStart={learning.startToday}
+            onLevelChange={learning.updateLevel}
+            onStart={() => void learning.generateSession()}
           />
+          <SessionHistory sessions={learning.history} activeId={session?.id ?? null} onSelect={learning.selectSession} />
+
+          {learning.error && (
+            <p role="alert" className="mt-4 border border-[#b23a2b]/45 bg-[#b23a2b]/5 px-4 py-3 text-xs leading-5 text-[#8d2f24]">{learning.error}</p>
+          )}
 
           {session && (
             <>
               <ReadingSection
                 apiKey={learning.apiKey}
+                reading={session.content.reading}
                 isCopied={learning.isReadingCopied}
                 onCopy={() => void learning.copyReading()}
                 onDownload={learning.downloadReading}
               />
               <DiscussionSection
-                draft={learning.draft}
+                discussion={session.content.discussion}
+                conversation={session.conversation}
+                draft={session.draft}
+                isSending={learning.isSending}
                 onDraftChange={learning.updateDraft}
+                onSend={() => void learning.sendAnswer()}
               />
               <p className="mx-auto max-w-[880px] border-t border-[#29231b]/20 pb-2 pt-3 text-[12px] leading-[1.8] text-[#70695f] sm:text-[13px]">
                 Dagens tekst, samtaleemne, udtryk og spørgsmål er genereret af

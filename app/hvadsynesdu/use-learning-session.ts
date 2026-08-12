@@ -1,135 +1,162 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { DEFAULT_PROFILE, STORAGE_KEYS, STORAGE_LIMITS } from "./constants";
-import { DAILY_READING } from "./daily-content";
-import { parseArray, parseObject, toDateKey } from "./storage";
-import type { LearnerProfile, LearningSession } from "./types";
+import { useEffect, useMemo, useState } from "react";
+import { DEFAULT_PROFILE, EMPTY_SESSION_STORE, STORAGE_KEYS } from "./constants";
+import { mergeProfile } from "./profile";
+import { addSession, parseProfile, parseSessionStore, toDateKey } from "./storage";
+import type { DanishLevel, FeedbackResult, GeneratedContent, LearnerProfile, LearningSession, SessionStore } from "./types";
 
 export function useLearningSession() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [todayLabel, setTodayLabel] = useState("I dag");
-  const [session, setSession] = useState<LearningSession | null>(null);
-  const [history, setHistory] = useState<LearningSession[]>([]);
+  const [store, setStore] = useState<SessionStore>(EMPTY_SESSION_STORE);
   const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
   const [apiKey, setApiKey] = useState("");
   const [isApiKeySaved, setIsApiKeySaved] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState("");
   const [isReadingCopied, setIsReadingCopied] = useState(false);
   const [isContactCopied, setIsContactCopied] = useState(false);
-  const actionCounterRef = useRef(0);
 
   useEffect(() => {
-    let storedHistory: LearningSession[] = [];
-    let storedProfile: LearnerProfile | null = null;
+    let nextStore = EMPTY_SESSION_STORE;
+    let nextProfile = DEFAULT_PROFILE;
     let storedApiKey = "";
-
     try {
-      storedHistory = parseArray(localStorage.getItem(STORAGE_KEYS.history));
-      storedProfile = parseObject(localStorage.getItem(STORAGE_KEYS.profile));
+      nextStore = parseSessionStore(localStorage.getItem(STORAGE_KEYS.sessions));
+      nextProfile = parseProfile(localStorage.getItem(STORAGE_KEYS.profile) ?? localStorage.getItem(STORAGE_KEYS.legacyProfile));
       storedApiKey = localStorage.getItem(STORAGE_KEYS.apiKey) ?? "";
     } catch {
       // The page remains usable when browser storage is unavailable.
     }
-
     const frame = requestAnimationFrame(() => {
-      setHistory(storedHistory.slice(0, STORAGE_LIMITS.sessions));
-      setProfile(storedProfile ?? DEFAULT_PROFILE);
+      setStore(nextStore);
+      setProfile(nextProfile);
       setApiKey(storedApiKey);
       setIsApiKeySaved(Boolean(storedApiKey));
-      setTodayLabel(
-        new Intl.DateTimeFormat("da-DK", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }).format(new Date()),
-      );
+      setTodayLabel(new Intl.DateTimeFormat("da-DK", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date()));
       setHasLoaded(true);
     });
-
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  function persistHistory(nextSession: LearningSession) {
-    setSession(nextSession);
-    setHistory((current) => {
-      const next = [
-        nextSession,
-        ...current.filter((item) => item.id !== nextSession.id),
-      ].slice(0, STORAGE_LIMITS.sessions);
-      try {
-        localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(next));
-      } catch {
-        // Keep the session in memory if storage is full or unavailable.
-      }
-      return next;
-    });
+  const session = useMemo(
+    () => store.sessions.find((item) => item.id === store.activeSessionId) ?? store.sessions[0] ?? null,
+    [store],
+  );
+  const todayCount = store.sessions.filter((item) => item.dateKey === toDateKey(new Date())).length;
+
+  function persistStore(next: SessionStore) {
+    setStore(next);
+    try { localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(next)); } catch { /* keep in memory */ }
   }
 
-  function startToday() {
-    if (!apiKey.trim()) return;
+  function persistProfile(next: LearnerProfile) {
+    setProfile(next);
+    try { localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(next)); } catch { /* keep in memory */ }
+  }
+
+  function updateLevel(level: DanishLevel) {
+    persistProfile({ ...profile, selectedLevel: level, updatedAt: Date.now() });
+  }
+
+  async function generateSession() {
     const savedKey = apiKey.trim();
+    if (!savedKey || isGenerating) return;
+    setIsGenerating(true);
+    setError("");
     try {
-      localStorage.setItem(STORAGE_KEYS.apiKey, savedKey);
-    } catch {
-      // The key remains available for this visit when storage is unavailable.
+      const sourceMode = (store.generationCount + 1) % 3 === 0 ? "current-source" : "original";
+      const response = await fetch("/api/hvadsynesdu/generate", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${savedKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          level: profile.selectedLevel,
+          targetLevel: profile.targetLevel,
+          sourceMode,
+          recentTopics: store.sessions.map((item) => `${item.content.reading.category}: ${item.content.reading.title}`).slice(0, 10),
+        }),
+      });
+      const body = await response.json() as { content?: GeneratedContent; error?: string };
+      if (!response.ok || !body.content) throw new Error(body.error || "Sessionen kunne ikke oprettes.");
+      const now = Date.now();
+      const nextSession: LearningSession = {
+        id: crypto.randomUUID(),
+        createdAt: now,
+        dateKey: toDateKey(new Date(now)),
+        level: profile.selectedLevel,
+        content: body.content,
+        conversation: [],
+        draft: "",
+      };
+      persistStore(addSession(store, nextSession));
+      try { localStorage.setItem(STORAGE_KEYS.apiKey, savedKey); } catch { /* keep in memory */ }
+      setApiKey(savedKey);
+      setIsApiKeySaved(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Sessionen kunne ikke oprettes.");
+    } finally {
+      setIsGenerating(false);
     }
-    setApiKey(savedKey);
-    setIsApiKeySaved(true);
+  }
 
-    const date = toDateKey(new Date());
-    const previous = history.find((item) => item.date === date);
-    if (previous) {
-      setSession(previous);
-      setDraft(previous.answer ?? "");
-      return;
-    }
-
-    actionCounterRef.current += 1;
-    persistHistory({
-      id: `session-${date}`,
-      date,
-      title: DAILY_READING.title,
-      answer: "",
-      updatedAt: actionCounterRef.current,
-    });
-    setDraft("");
+  function selectSession(id: string) {
+    persistStore({ ...store, activeSessionId: id });
+    setError("");
   }
 
   function updateDraft(value: string) {
-    setDraft(value);
     if (!session) return;
-    actionCounterRef.current += 1;
-    persistHistory({
-      ...session,
-      answer: value,
-      updatedAt: Math.max(session.updatedAt + 1, actionCounterRef.current),
-    });
+    updateSession({ ...session, draft: value.slice(0, 6000) });
   }
 
-  function saveProfile(next: LearnerProfile) {
-    const updated = { ...next, updatedAt: Date.now() };
-    setProfile(updated);
+  async function sendAnswer() {
+    if (!session?.draft.trim() || isSending) return;
+    setIsSending(true);
+    setError("");
+    const answer = session.draft.trim();
     try {
-      localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(updated));
-    } catch {
-      // The profile still remains available during this visit.
+      const response = await fetch("/api/hvadsynesdu/feedback", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          level: session.level,
+          targetLevel: profile.targetLevel,
+          content: session.content,
+          profile,
+          answer,
+          previousTurns: session.conversation.map((turn) => ({ userAnswer: turn.userAnswer, reply: turn.feedback.reply })),
+        }),
+      });
+      const body = await response.json() as { feedback?: FeedbackResult; error?: string };
+      if (!response.ok || !body.feedback) throw new Error(body.error || "Svaret kunne ikke behandles.");
+      const nextSession: LearningSession = {
+        ...session,
+        draft: "",
+        conversation: [...session.conversation, { id: crypto.randomUUID(), createdAt: session.createdAt + session.conversation.length + 1, userAnswer: answer, feedback: body.feedback }],
+      };
+      updateSession(nextSession);
+      persistProfile(mergeProfile(profile, body.feedback.profileUpdate));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Svaret kunne ikke behandles.");
+    } finally {
+      setIsSending(false);
     }
   }
 
-  function updateApiKey(value: string) {
-    setApiKey(value);
+  function updateSession(nextSession: LearningSession) {
+    persistStore({
+      ...store,
+      activeSessionId: nextSession.id,
+      sessions: store.sessions.map((item) => item.id === nextSession.id ? nextSession : item),
+    });
   }
 
   function forgetApiKey() {
     setApiKey("");
     setIsApiKeySaved(false);
-    try {
-      localStorage.removeItem(STORAGE_KEYS.apiKey);
-    } catch {
-      // The field remains usable for this visit.
-    }
+    try { localStorage.removeItem(STORAGE_KEYS.apiKey); } catch { /* field stays usable */ }
   }
 
   async function copyContactEmail() {
@@ -139,19 +166,18 @@ export function useLearningSession() {
   }
 
   async function copyReading() {
-    await navigator.clipboard.writeText(DAILY_READING.paragraphs.join("\n\n"));
+    if (!session) return;
+    await navigator.clipboard.writeText(session.content.reading.paragraphs.join("\n\n"));
     setIsReadingCopied(true);
     setTimeout(() => setIsReadingCopied(false), 2000);
   }
 
   function downloadReading() {
-    const text = DAILY_READING.paragraphs.join("\n\n");
-    const href = URL.createObjectURL(
-      new Blob([text], { type: "text/plain;charset=utf-8" }),
-    );
+    if (!session) return;
+    const href = URL.createObjectURL(new Blob([session.content.reading.paragraphs.join("\n\n")], { type: "text/plain;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = href;
-    link.download = "naar-foeler-man-sig-hjemme.txt";
+    link.download = `${slug(session.content.reading.title)}.txt`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -159,22 +185,13 @@ export function useLearningSession() {
   }
 
   return {
-    apiKey,
-    copyContactEmail,
-    copyReading,
-    downloadReading,
-    draft,
-    forgetApiKey,
-    hasLoaded,
-    isApiKeySaved,
-    isContactCopied,
-    isReadingCopied,
-    profile,
-    saveProfile,
-    session,
-    startToday,
-    todayLabel,
-    updateApiKey,
-    updateDraft,
+    apiKey, copyContactEmail, copyReading, downloadReading, error, forgetApiKey,
+    generateSession, hasLoaded, history: store.sessions, isApiKeySaved, isContactCopied,
+    isGenerating, isReadingCopied, isSending, profile, selectSession, sendAnswer,
+    session, todayCount, todayLabel, updateApiKey: setApiKey, updateDraft, updateLevel,
   };
+}
+
+function slug(value: string) {
+  return value.toLocaleLowerCase("da-DK").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "dagens-laesning";
 }

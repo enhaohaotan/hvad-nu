@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { StepLabel } from "@/app/_components/step-label";
-import type { LearnerProfile, LearningSession } from "../types";
-
-const LEVELS = ["0", "A1", "A2", "B1", "B2", "C1", "C2"] as const;
+import { LEVELS, type DanishLevel, type LearnerProfile } from "../types";
 
 type SetupStepsProps = {
   apiKey: string;
   hasLoaded: boolean;
   isApiKeySaved: boolean;
   profile: LearnerProfile;
-  session: LearningSession | null;
+  todayCount: number;
+  isGenerating: boolean;
   todayLabel: string;
   onApiKeyChange: (value: string) => void;
   onForgetApiKey: () => void;
-  onProfileChange: (profile: LearnerProfile) => void;
+  onLevelChange: (level: DanishLevel) => void;
   onStart: () => void;
 };
 
@@ -22,11 +21,12 @@ export function SetupSteps({
   hasLoaded,
   isApiKeySaved,
   profile,
-  session,
+  todayCount,
+  isGenerating,
   todayLabel,
   onApiKeyChange,
   onForgetApiKey,
-  onProfileChange,
+  onLevelChange,
   onStart,
 }: SetupStepsProps) {
   return (
@@ -44,6 +44,7 @@ export function SetupSteps({
             isSaved={isApiKeySaved}
             onChange={onApiKeyChange}
             onForget={onForgetApiKey}
+            disabled={isGenerating}
           />
         </div>
       </div>
@@ -56,25 +57,21 @@ export function SetupSteps({
           <StepLabel number="02" label="Opret dagens session" accent="#0b4a47" />
         </div>
         <div className="py-6 lg:pl-8">
-          <fieldset>
+          <fieldset disabled={isGenerating} className="disabled:pointer-events-none disabled:opacity-60">
             <legend className="sr-only">Dit danske niveau</legend>
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-6">
               <p className="editorial-serif whitespace-nowrap text-xl">Dit danske niveau</p>
               <MobileLevelPicker
-                value={profile.level}
-                onChange={(level) =>
-                  onProfileChange({
-                    level,
-                    updatedAt: profile.updatedAt,
-                  })
-                }
+                value={profile.selectedLevel}
+                onChange={onLevelChange}
+                disabled={isGenerating}
               />
               <div className="hidden grid-cols-7 gap-px bg-[#29231b]/25 p-px sm:grid">
                 {LEVELS.map((level) => (
                   <label
                     key={level}
                     className={`flex min-h-8 cursor-pointer items-center justify-center px-1.5 text-center text-[9px] font-semibold uppercase tracking-[0.08em] transition ${
-                      profile.level === level
+                      profile.selectedLevel === level
                         ? "bg-[#0b4a47] text-[#f8f2e6]"
                         : "bg-[#f7f2e8] text-[#575147] hover:bg-[#e9e3d6]"
                     }`}
@@ -83,13 +80,8 @@ export function SetupSteps({
                       type="radio"
                       name="danish-level"
                       value={level}
-                      checked={profile.level === level}
-                      onChange={() =>
-                        onProfileChange({
-                          level,
-                          updatedAt: profile.updatedAt,
-                        })
-                      }
+                      checked={profile.selectedLevel === level}
+                      onChange={() => onLevelChange(level)}
                       className="sr-only"
                     />
                     {level}
@@ -101,10 +93,10 @@ export function SetupSteps({
           <button
             type="button"
             onClick={onStart}
-            disabled={!hasLoaded || !apiKey.trim()}
+            disabled={!hasLoaded || !apiKey.trim() || isGenerating}
             className="mt-6 flex min-h-[56px] w-full items-center justify-between bg-[#0b4a47] px-6 text-xs font-semibold uppercase tracking-[0.15em] text-[#f8f2e6] transition enabled:hover:bg-[#083b39] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a47]/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span>{session ? "Åbn dagens session" : "Opret dagens session"}</span>
+            <span>{isGenerating ? "Opretter session …" : todayCount > 0 ? "Lav en ny session" : "Lav dagens session"}</span>
             <span className="text-lg" aria-hidden="true">→</span>
           </button>
           {!apiKey && hasLoaded && (
@@ -124,9 +116,11 @@ export function SetupSteps({
 function MobileLevelPicker({
   value,
   onChange,
+  disabled,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  value: DanishLevel;
+  onChange: (value: DanishLevel) => void;
+  disabled: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -153,7 +147,8 @@ function MobileLevelPicker({
   return (
     <div ref={pickerRef} className="relative w-[72px] justify-self-end sm:hidden">
       <button
-        type="button"
+      type="button"
+      disabled={disabled}
         aria-expanded={isOpen}
         aria-controls="mobile-level-options"
         onClick={() => setIsOpen((current) => !current)}
@@ -203,11 +198,13 @@ function ApiKeyField({
   isSaved,
   onChange,
   onForget,
+  disabled,
 }: {
   apiKey: string;
   isSaved: boolean;
   onChange: (value: string) => void;
   onForget: () => void;
+  disabled: boolean;
 }) {
   return (
     <div>
@@ -217,6 +214,7 @@ function ApiKeyField({
           <button
             type="button"
             onClick={onForget}
+            disabled={disabled}
             className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b655b] underline underline-offset-4 hover:text-[#0b4a47] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b4a47]/25"
           >
             Fjern nøgle
@@ -238,13 +236,14 @@ function ApiKeyField({
             placeholder="sk-…"
             autoComplete="off"
             spellCheck={false}
+            disabled={disabled}
             className="mt-3 min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 font-mono text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#0b4a47] focus:ring-2 focus:ring-[#0b4a47]/15"
           />
         </>
       )}
       <p className="mt-2 text-xs leading-5 text-[#6b655b]">
-        API-nøglen gemmes i denne browser. Den sendes kun, når dagens session
-        oprettes, og gemmes aldrig på vores server.
+        API-nøglen gemmes i denne browser. Den sendes kun, når indhold oprettes
+        eller feedback gives, og gemmes aldrig på vores server.
       </p>
     </div>
   );

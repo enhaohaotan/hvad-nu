@@ -1,7 +1,6 @@
-# Hva’ sagde de?
+# Hvad nu?
 
-Turn a public DR LYD podcast episode into a readable Danish transcript with
-OpenAI Speech-to-Text.
+Two independent Danish-learning tools with one shared editorial design language.
 
 [Visit the product suite](https://hvadnu.tanenhao.com)
 
@@ -13,8 +12,14 @@ OpenAI Speech-to-Text.
 4. OpenAI transcribes the audio with the user's own API key.
 5. The transcript streams into the page and can be read, copied, or downloaded.
 
-The page also includes a compact audio player and keeps up to ten transcript
+The transcription page also includes a compact audio player and keeps up to ten transcript
 versions in the current browser for quick access later.
+
+`Hva’ synes du?` generates a roughly ten-minute Danish reading followed by a
+focused written discussion. It supplies useful expressions and open questions,
+then returns detailed corrections, language upgrades, a complete revised answer,
+and a follow-up question. Sessions and an evolving learner profile stay in the
+current browser.
 
 ## Principles
 
@@ -23,8 +28,8 @@ authentication, database, analytics, payments, background workers, or
 permanent server-side storage.
 
 The user supplies their own OpenAI API key. It is stored in that browser's
-`localStorage`, sent only with a transcription request, and never logged or
-persisted by the application server. The page loads no third-party scripts and
+`localStorage`, sent only with an OpenAI transcription, generation, translation,
+or feedback request, and never logged or persisted by the application server. The page loads no third-party scripts and
 uses restrictive browser security headers.
 
 ## Technology
@@ -55,9 +60,10 @@ No environment variables are required.
 - `/hvadsagdede` — Hva’ sagde de?, the DR LYD transcription product.
 - `/hvadsagdede/demo` — a complete, ready-to-read demo with the timed
   transcript of “Migrantkaos i Ceuta” and Chinese and English translations.
-- `/hvadsynesdu` — Hva’ synes du?, the independent Danish reading and written
-  discussion product. Its current MVP presents the interface without making AI
-  requests.
+- `/hvadsynesdu` — Hva’ synes du?, the independent AI-generated Danish reading
+  and written-discussion product. It keeps the ten newest sessions and the
+  learner profile in local storage; every third generation may use a verified
+  current Danish source through OpenAI web search.
 - `/` — redirects to `/hvadsagdede`.
 
 ## Limitations
@@ -68,7 +74,7 @@ No environment variables are required.
 - Long transcriptions can be limited by the hosting platform's request duration.
 - AI transcription can contain mistakes.
 - OpenAI usage is billed directly to the user's API key.
-- Saved keys and transcripts remain in one browser and do not sync between
+- Saved keys, transcripts, learning sessions, and profiles remain in one browser and do not sync between
   devices.
 
 ## Checks
