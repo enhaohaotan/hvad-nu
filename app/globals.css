@@ -83,6 +83,15 @@ input[type="range"]:disabled {
   line-height: 0.72;
 }
 
+.discussion-editorial-copy::first-letter {
+  float: left;
+  margin: 0.1em 0.12em 0 0;
+  color: #d9542b;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 4.1em;
+  line-height: 0.72;
+}
+
 .transcript-with-translation {
   text-align: left;
   text-justify: auto;

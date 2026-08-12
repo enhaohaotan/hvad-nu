@@ -43,7 +43,12 @@ export function HvadSynesDu() {
 
           {session && (
             <>
-              <ReadingSection />
+              <ReadingSection
+                apiKey={learning.apiKey}
+                isCopied={learning.isReadingCopied}
+                onCopy={() => void learning.copyReading()}
+                onDownload={learning.downloadReading}
+              />
               <DiscussionSection
                 draft={learning.draft}
                 onDraftChange={learning.updateDraft}

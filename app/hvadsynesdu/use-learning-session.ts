@@ -15,6 +15,7 @@ export function useLearningSession() {
   const [apiKey, setApiKey] = useState("");
   const [isApiKeySaved, setIsApiKeySaved] = useState(false);
   const [draft, setDraft] = useState("");
+  const [isReadingCopied, setIsReadingCopied] = useState(false);
   const [isContactCopied, setIsContactCopied] = useState(false);
   const actionCounterRef = useRef(0);
 
@@ -137,14 +138,37 @@ export function useLearningSession() {
     setTimeout(() => setIsContactCopied(false), 2000);
   }
 
+  async function copyReading() {
+    await navigator.clipboard.writeText(DAILY_READING.paragraphs.join("\n\n"));
+    setIsReadingCopied(true);
+    setTimeout(() => setIsReadingCopied(false), 2000);
+  }
+
+  function downloadReading() {
+    const text = DAILY_READING.paragraphs.join("\n\n");
+    const href = URL.createObjectURL(
+      new Blob([text], { type: "text/plain;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = "naar-foeler-man-sig-hjemme.txt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(href);
+  }
+
   return {
     apiKey,
     copyContactEmail,
+    copyReading,
+    downloadReading,
     draft,
     forgetApiKey,
     hasLoaded,
     isApiKeySaved,
     isContactCopied,
+    isReadingCopied,
     profile,
     saveProfile,
     session,

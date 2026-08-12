@@ -37,6 +37,9 @@ export function TranscriptView({
   availableTranslationLanguages,
   hasStickyTopBanner = false,
   initialShowTranslation = false,
+  variant = "transcription",
+  eyebrow = "Transskriptionen",
+  footerNote = "AI kan tage fejl. Sammenlign med lydsporet, hvis noget virker forkert.",
   onCopy,
   onDownload,
   onSeekTo,
@@ -53,6 +56,9 @@ export function TranscriptView({
   availableTranslationLanguages?: TranslationLanguage[];
   hasStickyTopBanner?: boolean;
   initialShowTranslation?: boolean;
+  variant?: "transcription" | "discussion";
+  eyebrow?: string;
+  footerNote?: string | null;
   onCopy: () => void;
   onDownload: () => void;
   onSeekTo?: (seconds: number) => void;
@@ -90,6 +96,7 @@ export function TranscriptView({
     return -1;
   }, [currentTime, isPlayerOpen, timedSentences]);
   const selectedTranslations = translations[translationLanguage];
+  const isDiscussion = variant === "discussion";
   const languageEntries = Object.entries(TRANSLATION_LANGUAGES).filter(
     ([language]) =>
       !availableTranslationLanguages?.length ||
@@ -207,12 +214,18 @@ export function TranscriptView({
 
   return (
     <section
-      className="mt-12 border-t-4 border-[#76866f] pt-7 sm:mt-16 sm:pt-9"
+      className={`mt-12 border-t-4 pt-7 sm:mt-16 sm:pt-9 ${
+        isDiscussion ? "border-[#0b4a47]" : "border-[#76866f]"
+      }`}
       aria-labelledby="transcript-title"
     >
       <div className="border-b border-[#29231b]/40 pb-6 md:pr-[220px]">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9f211e]">
-          Transskriptionen
+        <p
+          className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${
+            isDiscussion ? "text-[#d9542b]" : "text-[#9f211e]"
+          }`}
+        >
+          {eyebrow}
         </p>
         <h2
           id="transcript-title"
@@ -326,7 +339,11 @@ export function TranscriptView({
           {translationError && (
             <p
               role="alert"
-              className="mt-1.5 max-w-72 border border-[#9f211e]/30 bg-[#f7f2e8]/95 px-2.5 py-2 text-[10px] leading-4 text-[#9f211e] shadow-sm"
+              className={`mt-1.5 max-w-72 border bg-[#f7f2e8]/95 px-2.5 py-2 text-[10px] leading-4 shadow-sm ${
+                isDiscussion
+                  ? "border-[#d9542b]/30 text-[#b84424]"
+                  : "border-[#9f211e]/30 text-[#9f211e]"
+              }`}
             >
               {translationError}
             </p>
@@ -336,7 +353,7 @@ export function TranscriptView({
 
       <article
         aria-live="polite"
-        className={`${showTranslation ? "transcript-with-translation leading-[2.45]" : "editorial-copy leading-[1.8]"} mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] text-[#332e27] sm:py-12 sm:text-[16px]`}
+        className={`${showTranslation ? "transcript-with-translation leading-[2.45]" : `${isDiscussion ? "discussion-editorial-copy" : "editorial-copy"} leading-[1.8]`} mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] text-[#332e27] sm:py-12 sm:text-[16px]`}
       >
         {displaySentences.map((sentence, index) => {
           const isTimed = sentence.start !== undefined && Boolean(onSeekTo);
@@ -393,9 +410,9 @@ export function TranscriptView({
           />
         )}
       </article>
-      {phase === "done" && (
+      {phase === "done" && footerNote && (
         <p className="mx-auto max-w-[880px] border-t border-[#29231b]/20 pb-2 pt-3 text-[12px] leading-[1.8] text-[#70695f] sm:text-[13px]">
-          AI kan tage fejl. Sammenlign med lydsporet, hvis noget virker forkert.
+          {footerNote}
         </p>
       )}
     </section>
