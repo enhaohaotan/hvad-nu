@@ -4,6 +4,7 @@ import { DEFAULT_PROFILE, EMPTY_SESSION_STORE } from "../app/hvadsynesdu/constan
 import { mergeProfile } from "../app/hvadsynesdu/profile.ts";
 import { addSession } from "../app/hvadsynesdu/storage.ts";
 import type { FeedbackResult, LearningSession } from "../app/hvadsynesdu/types.ts";
+import { isLearningModel } from "../app/hvadsynesdu/learning-model.ts";
 
 function session(id: string, dateKey = "2026-08-12"): LearningSession {
   return {
@@ -43,4 +44,11 @@ test("merges repeated profile patterns deterministically", () => {
   assert.equal(twice.recurringPatterns[0].lastSeen, 200);
   assert.equal(twice.activeExpressions[0].introducedCount, 2);
   assert.equal(twice.estimatedWritingLevel, "B2");
+});
+
+test("accepts only the three supported learning models", () => {
+  assert.equal(isLearningModel("gpt-5.6-luna"), true);
+  assert.equal(isLearningModel("gpt-5.6-terra"), true);
+  assert.equal(isLearningModel("gpt-5.6-sol"), true);
+  assert.equal(isLearningModel("gpt-5.6"), false);
 });

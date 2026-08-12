@@ -1,4 +1,4 @@
-export const LEARNING_MODEL = "gpt-5.6";
+import type { LearningModel } from "./learning-model";
 
 export async function createStructuredResponse<T>(input: {
   apiKey: string;
@@ -8,6 +8,7 @@ export async function createStructuredResponse<T>(input: {
   signal: AbortSignal;
   useWebSearch?: boolean;
   maxOutputTokens?: number;
+  model: LearningModel;
 }): Promise<T> {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -16,7 +17,7 @@ export async function createStructuredResponse<T>(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: LEARNING_MODEL,
+      model: input.model,
       store: false,
       reasoning: { effort: input.useWebSearch ? "low" : "none" },
       input: input.prompt,

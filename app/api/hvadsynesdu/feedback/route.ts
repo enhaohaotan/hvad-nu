@@ -4,6 +4,7 @@ import { createStructuredResponse } from "@/app/hvadsynesdu/openai";
 import { feedbackPrompt } from "@/app/hvadsynesdu/prompts";
 import { isLevel } from "@/app/hvadsynesdu/storage";
 import type { FeedbackResult, GeneratedContent, LearnerProfile } from "@/app/hvadsynesdu/types";
+import { isLearningModel } from "@/app/hvadsynesdu/learning-model";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -14,11 +15,12 @@ export async function POST(request: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: "Indtast din OpenAI API-nøgle." }, { status: 401 });
   try {
     const body = await request.json() as Record<string, unknown>;
-    if (!isLevel(body.level) || !isLevel(body.targetLevel) || typeof body.answer !== "string" || !body.answer.trim()) {
-      return NextResponse.json({ error: "Skriv et svar og vælg et gyldigt niveau." }, { status: 400 });
+    if (!isLevel(body.level) || !isLevel(body.targetLevel) || !isLearningModel(body.model) || typeof body.answer !== "string" || !body.answer.trim()) {
+      return NextResponse.json({ error: "Skriv et svar og vælg et gyldigt niveau og en gyldig model." }, { status: 400 });
     }
     const feedback = await createStructuredResponse<FeedbackResult>({
       apiKey,
+      model: body.model,
       prompt: feedbackPrompt({
         level: body.level,
         targetLevel: body.targetLevel,

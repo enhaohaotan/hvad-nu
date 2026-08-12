@@ -36,10 +36,12 @@ export function HvadSynesDu() {
             profile={learning.profile}
             todayCount={learning.todayCount}
             isGenerating={learning.isGenerating}
+            model={learning.model}
             todayLabel={learning.todayLabel}
             onApiKeyChange={learning.updateApiKey}
             onForgetApiKey={learning.forgetApiKey}
             onLevelChange={learning.updateLevel}
+            onModelChange={learning.updateModel}
             onStart={() => void learning.generateSession()}
           />
           <SessionHistory sessions={learning.history} activeId={session?.id ?? null} onSelect={learning.selectSession} />

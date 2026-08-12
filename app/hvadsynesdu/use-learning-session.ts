@@ -5,6 +5,7 @@ import { DEFAULT_PROFILE, EMPTY_SESSION_STORE, STORAGE_KEYS } from "./constants"
 import { mergeProfile } from "./profile";
 import { addSession, parseProfile, parseSessionStore, toDateKey } from "./storage";
 import type { DanishLevel, FeedbackResult, GeneratedContent, LearnerProfile, LearningSession, SessionStore } from "./types";
+import { DEFAULT_LEARNING_MODEL, isLearningModel, type LearningModel } from "./learning-model";
 
 export function useLearningSession() {
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -13,6 +14,7 @@ export function useLearningSession() {
   const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
   const [apiKey, setApiKey] = useState("");
   const [isApiKeySaved, setIsApiKeySaved] = useState(false);
+  const [model, setModel] = useState<LearningModel>(DEFAULT_LEARNING_MODEL);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
@@ -23,10 +25,13 @@ export function useLearningSession() {
     let nextStore = EMPTY_SESSION_STORE;
     let nextProfile = DEFAULT_PROFILE;
     let storedApiKey = "";
+    let storedModel: LearningModel = DEFAULT_LEARNING_MODEL;
     try {
       nextStore = parseSessionStore(localStorage.getItem(STORAGE_KEYS.sessions));
       nextProfile = parseProfile(localStorage.getItem(STORAGE_KEYS.profile) ?? localStorage.getItem(STORAGE_KEYS.legacyProfile));
       storedApiKey = localStorage.getItem(STORAGE_KEYS.apiKey) ?? "";
+      const modelValue = localStorage.getItem(STORAGE_KEYS.model);
+      if (isLearningModel(modelValue)) storedModel = modelValue;
     } catch {
       // The page remains usable when browser storage is unavailable.
     }
@@ -35,6 +40,7 @@ export function useLearningSession() {
       setProfile(nextProfile);
       setApiKey(storedApiKey);
       setIsApiKeySaved(Boolean(storedApiKey));
+      setModel(storedModel);
       setTodayLabel(new Intl.DateTimeFormat("da-DK", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date()));
       setHasLoaded(true);
     });
@@ -73,6 +79,7 @@ export function useLearningSession() {
         body: JSON.stringify({
           level: profile.selectedLevel,
           targetLevel: profile.targetLevel,
+          model,
           recentTopics: store.sessions.map((item) => `${item.content.reading.category}: ${item.content.reading.title}`).slice(0, 10),
         }),
       });
@@ -123,6 +130,7 @@ export function useLearningSession() {
           targetLevel: profile.targetLevel,
           content: session.content,
           profile,
+          model,
           answer,
           previousTurns: session.conversation.map((turn) => ({ userAnswer: turn.userAnswer, reply: turn.feedback.reply })),
         }),
@@ -157,6 +165,11 @@ export function useLearningSession() {
     try { localStorage.removeItem(STORAGE_KEYS.apiKey); } catch { /* field stays usable */ }
   }
 
+  function updateModel(next: LearningModel) {
+    setModel(next);
+    try { localStorage.setItem(STORAGE_KEYS.model, next); } catch { /* keep in memory */ }
+  }
+
   async function copyContactEmail() {
     await navigator.clipboard.writeText("enhaohao.tan@gmail.com");
     setIsContactCopied(true);
@@ -186,7 +199,7 @@ export function useLearningSession() {
     apiKey, copyContactEmail, copyReading, downloadReading, error, forgetApiKey,
     generateSession, hasLoaded, history: store.sessions, isApiKeySaved, isContactCopied,
     isGenerating, isReadingCopied, isSending, profile, selectSession, sendAnswer,
-    session, todayCount, todayLabel, updateApiKey: setApiKey, updateDraft, updateLevel,
+    model, session, todayCount, todayLabel, updateApiKey: setApiKey, updateDraft, updateLevel, updateModel,
   };
 }
 

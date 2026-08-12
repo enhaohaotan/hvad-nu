@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   profile: "hvad-synes-du:profile.v2",
   legacyProfile: "hvad-synes-du:profile.v1",
   apiKey: "hvad-synes-du:openai-api-key",
+  model: "hvad-synes-du:learning-model",
 } as const;
 
 export const STORAGE_LIMITS = {

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { StepLabel } from "@/app/_components/step-label";
 import { LEVELS, type DanishLevel, type LearnerProfile } from "../types";
+import { ModelPicker } from "./model-picker";
+import type { LearningModel } from "../learning-model";
 
 type SetupStepsProps = {
   apiKey: string;
@@ -9,10 +11,12 @@ type SetupStepsProps = {
   profile: LearnerProfile;
   todayCount: number;
   isGenerating: boolean;
+  model: LearningModel;
   todayLabel: string;
   onApiKeyChange: (value: string) => void;
   onForgetApiKey: () => void;
   onLevelChange: (level: DanishLevel) => void;
+  onModelChange: (model: LearningModel) => void;
   onStart: () => void;
 };
 
@@ -23,10 +27,12 @@ export function SetupSteps({
   profile,
   todayCount,
   isGenerating,
+  model,
   todayLabel,
   onApiKeyChange,
   onForgetApiKey,
   onLevelChange,
+  onModelChange,
   onStart,
 }: SetupStepsProps) {
   return (
@@ -90,6 +96,7 @@ export function SetupSteps({
               </div>
             </div>
           </fieldset>
+          <ModelPicker model={model} disabled={isGenerating} onChange={onModelChange} />
           <button
             type="button"
             onClick={onStart}

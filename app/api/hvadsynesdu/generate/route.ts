@@ -4,6 +4,7 @@ import { createStructuredResponse } from "@/app/hvadsynesdu/openai";
 import { contentPrompt } from "@/app/hvadsynesdu/prompts";
 import { isLevel } from "@/app/hvadsynesdu/storage";
 import type { GeneratedContent } from "@/app/hvadsynesdu/types";
+import { isLearningModel } from "@/app/hvadsynesdu/learning-model";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -13,12 +14,15 @@ export async function POST(request: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: "Indtast din OpenAI API-nøgle." }, { status: 401 });
   try {
     const body = await request.json() as Record<string, unknown>;
-    if (!isLevel(body.level) || !isLevel(body.targetLevel)) throw new Error("Vælg et gyldigt niveau.");
+    if (!isLevel(body.level) || !isLevel(body.targetLevel) || !isLearningModel(body.model)) {
+      return NextResponse.json({ error: "Vælg et gyldigt niveau og en gyldig model." }, { status: 400 });
+    }
     const recentTopics = Array.isArray(body.recentTopics)
       ? body.recentTopics.filter((item): item is string => typeof item === "string").slice(0, 10)
       : [];
     const content = await createStructuredResponse<GeneratedContent>({
       apiKey,
+      model: body.model,
       prompt: contentPrompt({ level: body.level, targetLevel: body.targetLevel, recentTopics }),
       schemaName: "danish_learning_session",
       schema: CONTENT_SCHEMA,
