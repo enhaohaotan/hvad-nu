@@ -30,7 +30,7 @@ export function EditorialSectionHeader({
         <h2
           className={`editorial-serif mt-2 text-3xl leading-none tracking-[-0.035em] sm:text-5xl ${
             isDiscussion
-              ? "max-w-[1400px] [text-wrap:balance]"
+              ? "max-w-none"
               : "max-w-[900px]"
           }`}
         >
