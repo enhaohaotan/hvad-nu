@@ -39,7 +39,7 @@ export function DiscussionSection({
           <dl className="divide-y divide-[#0b4a47]/20">
             {DAILY_DISCUSSION.expressions.map(([expression, meaning]) => (
               <div key={expression} className="py-2.5">
-                <dt className="editorial-serif text-[17px] leading-5 text-[#263a35]">
+                <dt className="text-sm font-semibold leading-5 text-[#263a35]">
                   {expression}
                 </dt>
                 <dd className="mt-0.5 text-[10px] leading-4 text-[#687a74]">
