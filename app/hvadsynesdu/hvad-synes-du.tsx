@@ -3,7 +3,6 @@
 import { DiscussionSection } from "./_components/discussion-section";
 import { ReadingSection } from "./_components/reading-section";
 import { SetupSteps } from "./_components/setup-steps";
-import { ThinkingSection } from "./_components/thinking-section";
 import { useLearningSession } from "./use-learning-session";
 import {
   ProductFooter,
@@ -44,39 +43,14 @@ export function HvadSynesDu() {
 
           {session && (
             <>
-              <ReadingSection
-                onContinue={learning.moveToThinking}
-                session={session}
+              <ReadingSection />
+              <DiscussionSection
+                draft={learning.draft}
+                onDraftChange={learning.updateDraft}
               />
-              {session.phase !== "reading" && (
-                <ThinkingSection
-                  onStartDiscussion={learning.startDiscussion}
-                  session={session}
-                />
-              )}
-              {(session.phase === "discussing" || session.phase === "feedback") && (
-                <DiscussionSection
-                  discussionRef={learning.discussionRef}
-                  draft={learning.draft}
-                  isReplying={learning.isReplying}
-                  onComplete={learning.completeSession}
-                  onDraftChange={learning.setDraft}
-                  onSend={learning.sendMessage}
-                  session={session}
-                />
-              )}
             </>
           )}
         </section>
-
-        {learning.saveNotice && (
-          <p
-            className="mt-6 border-y border-[#0b4a47]/35 bg-[#0b4a47]/5 px-4 py-3 text-center text-xs font-semibold text-[#0b4a47]"
-            role="status"
-          >
-            {learning.saveNotice}
-          </p>
-        )}
 
         <ProductFooter
           borderColor="rgba(25,59,54,0.7)"
