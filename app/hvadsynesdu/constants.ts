@@ -30,6 +30,5 @@ export const DEFAULT_PROFILE: LearnerProfile = {
 export const EMPTY_SESSION_STORE: SessionStore = {
   version: 2,
   activeSessionId: null,
-  generationCount: 0,
   sessions: [],
 };

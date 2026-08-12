@@ -26,7 +26,6 @@ test("keeps multiple sessions from the same day and caps history at ten", () => 
   assert.equal(store.sessions.length, 10);
   assert.equal(store.sessions.filter((item) => item.dateKey === "2026-08-12").length, 10);
   assert.equal(store.sessions[0].id, "s11");
-  assert.equal(store.generationCount, 12);
 });
 
 test("merges repeated profile patterns deterministically", () => {

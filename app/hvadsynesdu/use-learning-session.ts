@@ -67,14 +67,12 @@ export function useLearningSession() {
     setIsGenerating(true);
     setError("");
     try {
-      const sourceMode = (store.generationCount + 1) % 3 === 0 ? "current-source" : "original";
       const response = await fetch("/api/hvadsynesdu/generate", {
         method: "POST",
         headers: { Authorization: `Bearer ${savedKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           level: profile.selectedLevel,
           targetLevel: profile.targetLevel,
-          sourceMode,
           recentTopics: store.sessions.map((item) => `${item.content.reading.category}: ${item.content.reading.title}`).slice(0, 10),
         }),
       });

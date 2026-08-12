@@ -62,8 +62,9 @@ No environment variables are required.
   transcript of “Migrantkaos i Ceuta” and Chinese and English translations.
 - `/hvadsynesdu` — Hva’ synes du?, the independent AI-generated Danish reading
   and written-discussion product. It keeps the ten newest sessions and the
-  learner profile in local storage; every third generation may use a verified
-  current Danish source through OpenAI web search.
+  learner profile in local storage. For each session, the model can decide
+  whether a verified current Danish source would improve the reading and use
+  OpenAI web search when appropriate.
 - `/` — redirects to `/hvadsagdede`.
 
 ## Limitations

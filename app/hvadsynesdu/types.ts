@@ -116,6 +116,5 @@ export type LearnerProfile = {
 export type SessionStore = {
   version: 2;
   activeSessionId: string | null;
-  generationCount: number;
   sessions: LearningSession[];
 };

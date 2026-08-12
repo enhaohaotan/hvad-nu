@@ -13,7 +13,6 @@ export function parseSessionStore(value: string | null): SessionStore {
     return {
       version: 2,
       activeSessionId,
-      generationCount: typeof parsed.generationCount === "number" ? parsed.generationCount : parsed.sessions.length,
       sessions: parsed.sessions.slice(0, STORAGE_LIMITS.sessions),
     };
   } catch {
@@ -25,7 +24,6 @@ export function addSession(store: SessionStore, session: LearningSession): Sessi
   return {
     version: 2,
     activeSessionId: session.id,
-    generationCount: store.generationCount + 1,
     sessions: [session, ...store.sessions.filter((item) => item.id !== session.id)].slice(0, STORAGE_LIMITS.sessions),
   };
 }

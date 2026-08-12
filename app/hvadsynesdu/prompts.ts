@@ -3,18 +3,15 @@ import type { DanishLevel, GeneratedContent, LearnerProfile } from "./types";
 export function contentPrompt(input: {
   level: DanishLevel;
   targetLevel: DanishLevel;
-  sourceMode: "original" | "current-source";
   recentTopics: string[];
 }) {
-  const sourceInstruction = input.sourceMode === "current-source"
-    ? `Brug web search til at finde én aktuel, troværdig dansk redaktionel kilde. Verificér titel, udgiver, URL og dato. Skriv en selvstændig, læringstilpasset gengivelse; kopiér ikke lange passager. Udfyld source. Hvis ingen egnet kilde findes, skriv en original tekst og sæt source til null.`
-    : "Skriv en original tekst og sæt source til null.";
   return [
     "Du designer én fokuseret dansk læringssession. Returnér kun data i det aftalte JSON-schema.",
     `Brugerens niveau er ${input.level}, og målet er ${input.targetLevel}. Tilpas sværhedsgraden til det aktuelle niveau og stræk forsigtigt mod målet.`,
     "Læsningen skal tage cirka 10 minutter og lyde som naturligt moderne dansk: nuanceret ordforråd, idiomatiske formuleringer, naturlige kollokationer og varieret sætningsbygning uden kunstigt akademisk sprog.",
     `Undgå om muligt disse nylige emner: ${input.recentTopics.length ? input.recentTopics.join("; ") : "ingen"}. Variér mellem samfund, kultur, teknologi, arbejde, uddannelse, hverdagsliv, sport, medier og psykologi.`,
-    sourceInstruction,
+    "Beslut selv, om denne session bør bygge på aktuelt autentisk materiale eller være en original tekst. Brug autentisk materiale med jævne mellemrum, især når et aktuelt og relevant emne vil give en bedre session, men søg ikke blot for søgningens skyld.",
+    "Hvis du vælger aktuelt materiale, skal du faktisk bruge web search og finde én troværdig dansk redaktionel kilde. Verificér titel, udgiver, URL og dato. Skriv en selvstændig, læringstilpasset gengivelse og kopiér ikke lange passager. Udfyld source kun med den verificerede kilde. Hvis du ikke bruger web search, skal teksten være original, og source skal være null. Opfind aldrig en kilde.",
     "Del teksten i naturlige afsnit. estimatedMinutes skal være 10, og levelLabel skal beskrive det valgte niveau kort.",
     "Diskussionen skal være tæt knyttet til læsningen. introduction skal bestå af 1-2 korte afsnit. expressions skal indeholde 4-6 nyttige danske ord, kollokationer eller idiomatiske udtryk med korte forklaringer på dansk. questions skal indeholde 2-3 åbne spørgsmål, der kræver begrundelse, eksempler eller refleksion.",
   ].join("\n\n");
