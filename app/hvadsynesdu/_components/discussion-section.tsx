@@ -12,7 +12,7 @@ export function DiscussionSection({
 }: DiscussionSectionProps) {
   return (
     <section
-      className="mt-10 pb-10 sm:mt-14 sm:pb-14"
+      className="mt-10 border-t border-[#0b4a47]/65 pb-10 pt-7 sm:mt-14 sm:pb-14 sm:pt-9"
       aria-labelledby="discussion-title"
     >
       <div id="discussion-title">
