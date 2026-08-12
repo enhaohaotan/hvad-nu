@@ -32,17 +32,17 @@ export function DiscussionSection({
           <section aria-labelledby="expressions-title">
           <h3
             id="expressions-title"
-            className="border-b border-[#0b4a47]/35 pb-3 text-[10px] font-bold uppercase tracking-[0.2em]"
+            className="border-b border-[#0b4a47]/35 pb-2 text-[9px] font-bold uppercase tracking-[0.18em]"
           >
             Ord og udtryk til diskussionen
           </h3>
           <dl className="divide-y divide-[#0b4a47]/20">
             {DAILY_DISCUSSION.expressions.map(([expression, meaning]) => (
-              <div key={expression} className="py-4">
-                <dt className="editorial-serif text-xl leading-6 text-[#263a35]">
+              <div key={expression} className="py-2.5">
+                <dt className="editorial-serif text-[17px] leading-5 text-[#263a35]">
                   {expression}
                 </dt>
-                <dd className="mt-1 text-xs leading-5 text-[#687a74]">
+                <dd className="mt-0.5 text-[10px] leading-4 text-[#687a74]">
                   {meaning}
                 </dd>
               </div>
