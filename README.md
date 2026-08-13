@@ -21,6 +21,9 @@ then returns detailed corrections, language upgrades, a complete revised answer,
 and a follow-up question. Sessions and an evolving learner profile stay in the
 current browser.
 
+> **Work in progress:** `Hva’ synes du?` is still under active development and
+> is not ready for use yet.
+
 ## Principles
 
 This is intentionally a small, single-purpose application. It has no accounts,
@@ -60,11 +63,11 @@ No environment variables are required.
 - `/hvadsagdede` — Hva’ sagde de?, the DR LYD transcription product.
 - `/hvadsagdede/demo` — a complete, ready-to-read demo with the timed
   transcript of “Migrantkaos i Ceuta” and Chinese and English translations.
-- `/hvadsynesdu` — Hva’ synes du?, the independent AI-generated Danish reading
-  and written-discussion product. It keeps the ten newest sessions and the
-  learner profile in local storage. For each session, the model can decide
-  whether a verified current Danish source would improve the reading and use
-  OpenAI web search when appropriate.
+- `/hvadsynesdu` — Hva’ synes du?, a work-in-progress AI-generated Danish
+  reading and written-discussion product that is not ready for use yet. It keeps
+  the ten newest sessions and the learner profile in local storage. For each
+  session, the model can decide whether a verified current Danish source would
+  improve the reading and use OpenAI web search when appropriate.
 - `/` — redirects to `/hvadsagdede`.
 
 ## Limitations
