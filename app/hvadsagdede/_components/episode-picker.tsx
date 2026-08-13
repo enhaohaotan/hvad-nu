@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import type { DrEpisode } from "@/lib/dr";
 import { formatCachedTime, formatEpisodeMeta } from "@/lib/episode-format";
 import {
@@ -26,13 +25,6 @@ const DR_DISCOVERY_LINKS = [
     href: "https://www.dr.dk/lyd/p1/kampen-om-historien-3166339029000",
   },
 ] as const;
-
-type SuggestionPosition = {
-  left: number;
-  top: number;
-  width: number;
-  maxHeight: number;
-};
 
 export function EpisodePicker({
   url,
@@ -62,9 +54,6 @@ export function EpisodePicker({
   onRemoveHistory: (entry: TranscriptCacheEntry) => void;
 }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestionPosition, setSuggestionPosition] =
-    useState<SuggestionPosition | null>(null);
-  const inputContainerRef = useRef<HTMLDivElement>(null);
   const lastGeneratedSourceUrl =
     cachedEpisodes.find((entry) => entry.sourceUrl)?.sourceUrl ?? "";
   const cachedEpisodeLinks = cachedEpisodes.filter(
@@ -96,26 +85,8 @@ export function EpisodePicker({
         latestSeriesEpisode,
     ) || visibleCachedEpisodeLinks.length > 0;
 
-  useEffect(() => {
-    if (!showSuggestions) return;
-
-    const updatePosition = () => {
-      const container = inputContainerRef.current;
-      if (container) setSuggestionPosition(positionSuggestions(container));
-    };
-
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [showSuggestions]);
-
   function openSuggestions() {
-    const container = inputContainerRef.current;
-    if (!suggestionsReady || !container) return;
-    setSuggestionPosition(positionSuggestions(container));
+    if (!suggestionsReady) return;
     setShowSuggestions(true);
   }
 
@@ -143,7 +114,7 @@ export function EpisodePicker({
           Indsæt et link til en DR LYD-episode
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <div ref={inputContainerRef} className="relative flex-1">
+          <div className="relative flex-1">
             <input
               id="episode-url"
               aria-labelledby="episode-url-label"
@@ -165,7 +136,7 @@ export function EpisodePicker({
               placeholder="https://www.dr.dk/lyd/…"
               readOnly={readOnly}
               disabled={isWorking}
-              className={`min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 text-[15px] outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60 ${readOnly ? "cursor-default" : "pr-16"}`}
+              className={`min-h-13 w-full border border-[#29231b]/35 bg-[#f7f2e8]/70 px-4 text-base outline-none transition placeholder:text-[#8d8579] focus:border-[#9f211e] focus:ring-2 focus:ring-[#9f211e]/15 disabled:opacity-60 sm:text-[15px] ${readOnly ? "cursor-default" : "pr-16"}`}
             />
             {url && !readOnly && (
               <button
@@ -182,15 +153,11 @@ export function EpisodePicker({
             )}
             {showSuggestions &&
               hasSuggestions &&
-              suggestionPosition &&
-              typeof document !== "undefined" &&
-              createPortal(
                 <ul
                   id="cached-episodes"
                   role="listbox"
                   aria-label="Gemte transskriptioner"
-                  className="editorial-scrollbar fixed z-50 overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] shadow-[0_14px_35px_rgba(43,35,27,0.2)]"
-                  style={suggestionPosition}
+                  className="editorial-scrollbar absolute left-0 top-[calc(100%+6px)] z-50 max-h-72 w-full overflow-y-auto border border-[#29231b]/30 bg-[#f7f2e8] shadow-[0_14px_35px_rgba(43,35,27,0.2)]"
                 >
                 {showFirstVisitSuggestion && latestGenstartEpisode && (
                   <li role="option" aria-selected={false}>
@@ -287,9 +254,7 @@ export function EpisodePicker({
                     </li>
                   );
                 })}
-                </ul>,
-                document.body,
-              )}
+                </ul>}
           </div>
           <button
             type="submit"
@@ -319,31 +284,6 @@ export function EpisodePicker({
       </div>
     </form>
   );
-}
-
-function positionSuggestions(container: HTMLDivElement): SuggestionPosition {
-  const rect = container.getBoundingClientRect();
-  const margin = 12;
-  const gap = 6;
-  const availableBelow = window.innerHeight - rect.bottom - gap - margin;
-  const availableAbove = rect.top - gap - margin;
-  const placeBelow = availableBelow >= 180 || availableBelow >= availableAbove;
-  const availableHeight = placeBelow ? availableBelow : availableAbove;
-  const maxHeight = Math.max(80, Math.min(288, availableHeight));
-  const width = Math.min(rect.width, window.innerWidth - margin * 2);
-  const left = Math.min(
-    Math.max(margin, rect.left),
-    window.innerWidth - width - margin,
-  );
-
-  return {
-    left,
-    top: placeBelow
-      ? rect.bottom + gap
-      : Math.max(margin, rect.top - gap - maxHeight),
-    width,
-    maxHeight,
-  };
 }
 
 function SuggestionButton({
