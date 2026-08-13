@@ -6,23 +6,38 @@ Two independent Danish-learning tools with one shared editorial design language.
 
 ## What it does
 
+### Hva’ sagde de?
+
+Turn a DR LYD podcast episode into a readable Danish transcript:
+
 1. Paste the URL of a specific episode from DR LYD.
 2. The application finds its audio through DR's public podcast RSS feed.
 3. The server downloads and splits the original MP3 without re-encoding it.
 4. OpenAI transcribes the audio with the user's own API key.
-5. The transcript streams into the page and can be read, copied, or downloaded.
+5. Read along while listening, show a translation, or copy and download the
+   finished transcript.
 
-The transcription page also includes a compact audio player and keeps up to ten transcript
-versions in the current browser for quick access later.
+The page includes a compact audio player and keeps up to ten transcript versions
+in the current browser for quick access later. A
+[ready-to-read demo](https://hvadnu.tanenhao.com/hvadsagdede/demo) is available
+without running the transcription flow.
 
-`Hva’ synes du?` generates a roughly ten-minute Danish reading followed by a
-focused written discussion. It supplies useful expressions and open questions,
-then returns detailed corrections, language upgrades, a complete revised answer,
-and a follow-up question. Sessions and an evolving learner profile stay in the
-current browser.
+### Hva’ synes du? — Work in progress
 
-> **Work in progress:** `Hva’ synes du?` is still under active development and
-> is not ready for use yet.
+> **This product is still under active development and is not ready for use.**
+
+The learning loop is **Read → Think → Discuss → Get feedback → Reuse what you
+learned**:
+
+1. Generate a roughly ten-minute Danish reading adapted to the learner's level.
+2. Explore a related discussion topic, useful expressions, and open questions.
+3. Write a response in a focused, chat-like discussion.
+4. Receive corrections, more natural alternatives, and a revised version.
+5. Reuse earlier corrections and expressions in later sessions.
+
+The ten newest sessions and an evolving learner profile stay in the current
+browser. The profile tracks recurring language patterns and recently introduced
+expressions so later feedback can build on previous work.
 
 ## Principles
 
