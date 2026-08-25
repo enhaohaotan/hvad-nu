@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { EditorialSectionHeader } from "@/app/_components/editorial-section-header";
 import type { TimedSentence } from "@/lib/timed-transcript";
 import {
+  createInterlinearLines,
+  type InterlinearLine,
+} from "@/lib/interlinear-layout";
+import {
   isTranslationLanguage,
   TRANSLATION_LANGUAGES,
   type TranslationLanguage,
@@ -82,7 +86,9 @@ export function TranscriptView({
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState("");
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+  const [interlinearLines, setInterlinearLines] = useState<InterlinearLine[]>([]);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLElement>(null);
   const translationAbortRef = useRef<AbortController | null>(null);
   const displaySentences = useMemo<DisplaySentence[]>(
     () =>
@@ -131,6 +137,68 @@ export function TranscriptView({
     () => () => translationAbortRef.current?.abort(),
     [],
   );
+
+  useEffect(() => {
+    if (!showTranslation || !selectedTranslations?.length) return;
+
+    const currentTranslations = selectedTranslations;
+    const element = transcriptRef.current;
+    if (!element) return;
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const translationMeasure = document.createElement("span");
+    translationMeasure.className =
+      "font-sans text-[10px] font-normal sm:text-[11px]";
+    Object.assign(translationMeasure.style, {
+      position: "fixed",
+      visibility: "hidden",
+      whiteSpace: "pre",
+      letterSpacing: "normal",
+      wordSpacing: "normal",
+      pointerEvents: "none",
+    });
+    document.body.appendChild(translationMeasure);
+    let previousWidth = 0;
+
+    function updateLayout() {
+      if (!element) return;
+      const width = Math.floor(element.clientWidth);
+      if (!width || width === previousWidth) return;
+      previousWidth = width;
+
+      const styles = window.getComputedStyle(element);
+      if (context) {
+        context.font = `${styles.fontStyle} ${styles.fontWeight} ${styles.fontSize} ${styles.fontFamily}`;
+      }
+
+      setInterlinearLines(
+        createInterlinearLines(
+          displaySentences.map((sentence, index) => ({
+            text: sentence.text,
+            translation: currentTranslations[index] ?? "",
+          })),
+          width,
+          (text) =>
+            context?.measureText(text).width ??
+            text.length * Number.parseFloat(styles.fontSize) * 0.55,
+          translationLanguage,
+          (text) => {
+            translationMeasure.textContent = text;
+            return Math.ceil(translationMeasure.getBoundingClientRect().width) + 1;
+          },
+        ),
+      );
+    }
+
+    updateLayout();
+    const observer = new ResizeObserver(updateLayout);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      translationMeasure.remove();
+    };
+  }, [displaySentences, selectedTranslations, showTranslation, translationLanguage]);
 
   async function ensureTranslation(language: TranslationLanguage) {
     if (translations[language]?.length === displaySentences.length) return;
@@ -349,57 +417,132 @@ export function TranscriptView({
       )}
 
       <article
+        ref={transcriptRef}
         aria-live="polite"
         className={`${showTranslation ? "transcript-with-translation leading-[2.45]" : `${isDiscussion ? "discussion-editorial-copy" : "editorial-copy"} leading-[1.8]`} mx-auto max-w-[880px] whitespace-pre-wrap py-9 text-[15px] text-[#332e27] sm:py-12 sm:text-[16px]`}
       >
-        {displaySentences.map((sentence, index) => {
-          const isTimed = sentence.start !== undefined && Boolean(onSeekTo);
-          const isActive = index === activeSentenceIndex;
-          const content = showTranslation && selectedTranslations?.[index] ? (
-            <ruby className="transcript-ruby">
-              {sentence.text}
-              <rt
-                lang={translationLanguage}
-                className="font-sans text-[10px] font-normal text-[#65705f] sm:text-[11px]"
+        {showTranslation && selectedTranslations && interlinearLines.length > 0
+          ? interlinearLines.map((line, lineIndex) => (
+              <div
+                key={`${lineIndex}:${line.segments[0]?.text.slice(0, 24)}`}
+                className="transcript-interlinear-line"
               >
-                {selectedTranslations[index]}
-              </rt>
-            </ruby>
-          ) : (
-            sentence.text
-          );
+                <div className="transcript-interlinear-original">
+                  {line.segments.map((segment, segmentIndex) => {
+                    const sentence = displaySentences[segment.sentenceIndex];
+                    const isTimed =
+                      sentence.start !== undefined && Boolean(onSeekTo);
+                    const isActive =
+                      segment.sentenceIndex === activeSentenceIndex;
+                    const content = `${segmentIndex > 0 ? " " : ""}${segment.text}`;
 
-          return isTimed ? (
-            <span
-              key={`${sentence.start}:${sentence.text.slice(0, 32)}`}
-              role="button"
-              tabIndex={0}
-              aria-current={isActive ? "true" : undefined}
-              onClick={(event) => {
-                event.currentTarget.blur();
-                onSeekTo?.(sentence.start ?? 0);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSeekTo?.(sentence.start ?? 0);
-                }
-              }}
-              className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
-                isActive
-                  ? "cursor-pointer bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
-                  : "cursor-pointer hover:bg-[#e7dfcf] [box-decoration-break:clone]"
-              }`}
-            >
-              {content}
-              {" "}
-            </span>
-          ) : (
-            <span key={`${index}:${sentence.text.slice(0, 32)}`}>
-              {content}{" "}
-            </span>
-          );
-        })}
+                    return isTimed ? (
+                      <span
+                        key={`${segment.sentenceIndex}:${segmentIndex}`}
+                        style={
+                          segment.gapAfter
+                            ? { marginRight: `${segment.gapAfter}px` }
+                            : undefined
+                        }
+                        role="button"
+                        tabIndex={0}
+                        aria-current={isActive ? "true" : undefined}
+                        onClick={(event) => {
+                          event.currentTarget.blur();
+                          onSeekTo?.(sentence.start ?? 0);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onSeekTo?.(sentence.start ?? 0);
+                          }
+                        }}
+                        className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
+                          isActive
+                            ? "cursor-pointer bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
+                            : "cursor-pointer hover:bg-[#e7dfcf] [box-decoration-break:clone]"
+                        }`}
+                      >
+                        {content}
+                      </span>
+                    ) : (
+                      <span
+                        key={`${segment.sentenceIndex}:${segmentIndex}`}
+                        style={
+                          segment.gapAfter
+                            ? { marginRight: `${segment.gapAfter}px` }
+                            : undefined
+                        }
+                      >
+                        {content}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div
+                  lang={translationLanguage}
+                  className="transcript-interlinear-translation font-sans text-[10px] font-normal text-[#65705f] sm:text-[11px]"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: line.segments
+                      .map((segment, segmentIndex) => {
+                        const nextSegment = line.segments[segmentIndex + 1];
+                        return nextSegment
+                          ? `${nextSegment.sourceStart - segment.sourceStart}px`
+                          : "minmax(0, 1fr)";
+                      })
+                      .join(" "),
+                  }}
+                >
+                  {line.segments.map((segment, segmentIndex) => (
+                    <span
+                      key={`${segment.sentenceIndex}:${segmentIndex}`}
+                      style={
+                        segmentIndex < line.segments.length - 1
+                          ? { whiteSpace: "nowrap" }
+                          : undefined
+                      }
+                    >
+                      {segment.translation}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          : displaySentences.map((sentence, index) => {
+              const isTimed = sentence.start !== undefined && Boolean(onSeekTo);
+              const isActive = index === activeSentenceIndex;
+
+              return isTimed ? (
+                <span
+                  key={`${sentence.start}:${sentence.text.slice(0, 32)}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-current={isActive ? "true" : undefined}
+                  onClick={(event) => {
+                    event.currentTarget.blur();
+                    onSeekTo?.(sentence.start ?? 0);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSeekTo?.(sentence.start ?? 0);
+                    }
+                  }}
+                  className={`transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9f211e]/35 ${
+                    isActive
+                      ? "cursor-pointer bg-[#9f211e] text-[#f8f2e6] [box-decoration-break:clone]"
+                      : "cursor-pointer hover:bg-[#e7dfcf] [box-decoration-break:clone]"
+                  }`}
+                >
+                  {sentence.text}{" "}
+                </span>
+              ) : (
+                <span key={`${index}:${sentence.text.slice(0, 32)}`}>
+                  {sentence.text}{" "}
+                </span>
+              );
+            })}
         {phase === "transcribing" && (
           <span
             className="ml-1 inline-block h-5 w-0.5 animate-pulse bg-[#9f211e] align-middle"

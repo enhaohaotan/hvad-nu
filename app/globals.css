@@ -88,14 +88,26 @@ input[type="range"]:disabled {
   text-justify: auto;
 }
 
-.transcript-ruby {
-  ruby-align: start;
-  ruby-position: under;
+.transcript-interlinear-line {
+  display: grid;
+  min-height: 2.45em;
+  min-width: 0;
+  grid-template-rows: 1.25em minmax(0, 1fr);
+  white-space: normal;
 }
 
-.transcript-ruby rt {
+.transcript-interlinear-original {
+  min-width: 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.transcript-interlinear-translation {
+  display: grid;
+  min-width: 0;
   letter-spacing: normal;
   line-height: 1.25;
+  overflow-wrap: anywhere;
   padding-top: 0.35em;
   text-align: left;
   text-justify: auto;
