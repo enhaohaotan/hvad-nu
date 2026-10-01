@@ -24,5 +24,5 @@ export type TranslationLanguage = keyof typeof TRANSLATION_LANGUAGES;
 export function isTranslationLanguage(
   value: string,
 ): value is TranslationLanguage {
-  return value in TRANSLATION_LANGUAGES;
+  return Object.hasOwn(TRANSLATION_LANGUAGES, value);
 }
