@@ -563,6 +563,8 @@ export function useTranscriptionWorkspace() {
     downloadTranscriptMarkdown({
       showTitle: episode?.showTitle,
       title: episode?.episodeTitle,
+      publishedAt: episode?.publishedAt,
+      duration: episode?.duration,
       description: episode?.description,
       transcript,
       translation,

@@ -1,4 +1,5 @@
-import { TRANSLATION_LANGUAGES, type TranslationLanguage } from "./translation.ts";
+import type { TranslationLanguage } from "./translation.ts";
+import { formatEpisodeMeta } from "./episode-format.ts";
 
 export type TranscriptTranslation = {
   language: TranslationLanguage;
@@ -8,29 +9,31 @@ export type TranscriptTranslation = {
 export function downloadTranscriptMarkdown({
   showTitle,
   title,
+  publishedAt,
+  duration,
   description,
   transcript,
   translation,
 }: {
   showTitle?: string;
   title?: string;
+  publishedAt?: string;
+  duration?: string;
   description?: string;
   transcript: string;
   translation?: TranscriptTranslation;
 }) {
   if (!transcript.trim()) return;
   const heading = title?.trim() || "Transskription";
+  const metadata = formatEpisodeMeta({ publishedAt, duration });
   const sections = [
-    `# ${heading.replace(/[\r\n]+/g, " ").replace(/[\\`*_[\]<>#]/g, "\\$&")}`,
+    `# ${escapeHeading(showTitle?.trim() || "Podcast")}${metadata ? ` **${escapeHeading(metadata)}**` : ""}`,
+    `## ${escapeHeading(heading)}`,
   ];
-  if (showTitle?.trim()) {
-    const podcastName = showTitle.trim().replace(/[\r\n]+/g, " ").replace(/[\\`*_[\]<>#]/g, "\\$&");
-    sections.push(`**Podcast:** ${podcastName}`);
-  }
-  if (description?.trim()) sections.push(`## Beskrivelse\n\n${description.trim()}`);
-  sections.push(`## Transskription\n\n${transcript.trim()}`);
+  if (description?.trim()) sections.push(description.trim());
+  sections.push("---", transcript.trim());
   if (translation?.text.trim()) {
-    sections.push(`## Oversættelse (${TRANSLATION_LANGUAGES[translation.language]})\n\n${translation.text.trim()}`);
+    sections.push("---", translation.text.trim());
   }
 
   const safeTitle = heading
@@ -48,4 +51,8 @@ export function downloadTranscriptMarkdown({
   link.remove();
   // Let the browser start the download before releasing the object URL.
   setTimeout(() => URL.revokeObjectURL(href), 1000);
+}
+
+function escapeHeading(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").replace(/[\\`*_[\]<>#]/g, "\\$&");
 }

@@ -134,6 +134,8 @@ export function DemoPage({ content }: { content: DemoContent }) {
     downloadTranscriptMarkdown({
       showTitle: episode.showTitle,
       title: episode.episodeTitle,
+      publishedAt: episode.publishedAt,
+      duration: episode.duration,
       description: episode.description,
       transcript: content.transcript,
       translation,
