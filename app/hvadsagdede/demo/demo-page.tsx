@@ -15,6 +15,10 @@ import { DemoTranscriptionSetup } from "./demo-transcription-setup";
 import type { DrEpisode } from "@/lib/dr";
 import type { TimedSentence } from "@/lib/timed-transcript";
 import type { TranscriptCacheEntry } from "@/lib/transcript-cache";
+import {
+  downloadTranscriptMarkdown,
+  type TranscriptTranslation,
+} from "@/lib/transcript-download";
 
 type DemoContent = {
   sourceUrl: string;
@@ -126,17 +130,14 @@ export function DemoPage({ content }: { content: DemoContent }) {
     copyFeedbackRef.current = setTimeout(() => setIsCopied(false), 2000);
   }
 
-  function downloadTranscript() {
-    const href = URL.createObjectURL(
-      new Blob([content.transcript], { type: "text/plain;charset=utf-8" }),
-    );
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = "migrantkaos-i-ceuta.txt";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(href);
+  function downloadTranscript(translation?: TranscriptTranslation) {
+    downloadTranscriptMarkdown({
+      showTitle: episode.showTitle,
+      title: episode.episodeTitle,
+      description: episode.description,
+      transcript: content.transcript,
+      translation,
+    });
   }
 
   async function copyContactEmail() {

@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { DrEpisode } from "@/lib/dr";
 import type { TimedSentence } from "@/lib/timed-transcript";
 import {
+  downloadTranscriptMarkdown,
+  type TranscriptTranslation,
+} from "@/lib/transcript-download";
+import {
   DEFAULT_TRANSCRIPTION_MODE,
   isTranscriptionMode,
   TRANSCRIPTION_MODES,
@@ -555,24 +559,14 @@ export function useTranscriptionWorkspace() {
     setTimeout(() => setIsContactCopied(false), 2000);
   }
 
-  function downloadTranscript() {
-    if (!transcript) return;
-    const title = episode?.episodeTitle || "transskription";
-    const safeTitle =
-      title
-        .toLocaleLowerCase("da")
-        .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
-        .replace(/^-|-$/g, "") || "transskription";
-    const href = URL.createObjectURL(
-      new Blob([transcript], { type: "text/plain;charset=utf-8" }),
-    );
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = `${safeTitle}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(href);
+  function downloadTranscript(translation?: TranscriptTranslation) {
+    downloadTranscriptMarkdown({
+      showTitle: episode?.showTitle,
+      title: episode?.episodeTitle,
+      description: episode?.description,
+      transcript,
+      translation,
+    });
   }
 
   return {

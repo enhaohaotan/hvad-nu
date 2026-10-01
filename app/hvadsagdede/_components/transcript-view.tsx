@@ -13,6 +13,7 @@ import {
   type TranslationLanguage,
 } from "@/lib/translation";
 import type { TranscriptionPhase } from "@/lib/transcription-client";
+import type { TranscriptTranslation } from "@/lib/transcript-download";
 
 const TRANSLATION_LANGUAGE_STORAGE_KEY = "hvad-sagde-de:translation-language";
 const TRANSLATION_CACHE_STORAGE_KEY = "hvad-sagde-de:translations:v1";
@@ -67,7 +68,7 @@ export function TranscriptView({
   metadata?: readonly string[];
   footerNote?: string | null;
   onCopy: () => void;
-  onDownload: () => void;
+  onDownload: (translation?: TranscriptTranslation) => void;
   onSeekTo?: (seconds: number) => void;
 }) {
   const [showTranslation, setShowTranslation] = useState(initialShowTranslation);
@@ -80,9 +81,14 @@ export function TranscriptView({
         : initialLanguage;
     },
   );
-  const [translations, setTranslations] = useState<
-    Partial<Record<TranslationLanguage, string[]>>
-  >(() => presetTranslations ?? {});
+  const [translations, setTranslations] = useState<Record<string, string[]>>(
+    () => Object.fromEntries(
+      Object.entries(presetTranslations ?? {}).map(([language, sentences]) => [
+        makeTranslationCacheKey(transcript, language as TranslationLanguage),
+        sentences,
+      ]),
+    ),
+  );
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState("");
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
@@ -104,7 +110,8 @@ export function TranscriptView({
     }
     return -1;
   }, [currentTime, isPlayerOpen, timedSentences]);
-  const selectedTranslations = translations[translationLanguage];
+  const selectedTranslationKey = makeTranslationCacheKey(transcript, translationLanguage);
+  const selectedTranslations = translations[selectedTranslationKey];
   const isDiscussion = variant === "discussion";
   const languageEntries = Object.entries(TRANSLATION_LANGUAGES).filter(
     ([language]) =>
@@ -201,17 +208,17 @@ export function TranscriptView({
   }, [displaySentences, selectedTranslations, showTranslation, translationLanguage]);
 
   async function ensureTranslation(language: TranslationLanguage) {
-    if (translations[language]?.length === displaySentences.length) return;
+    const cacheKey = makeTranslationCacheKey(transcript, language);
+    if (translations[cacheKey]?.length === displaySentences.length) return;
     setTranslationError("");
     if (!apiKey) {
       setTranslationError("Indtast din OpenAI API-nøgle for at oversætte.");
       return;
     }
 
-    const cacheKey = makeTranslationCacheKey(transcript, language);
     const cached = readTranslationCache(cacheKey, displaySentences.length);
     if (cached) {
-      setTranslations((current) => ({ ...current, [language]: cached }));
+      setTranslations((current) => ({ ...current, [cacheKey]: cached }));
       return;
     }
 
@@ -248,7 +255,7 @@ export function TranscriptView({
       if (result.length !== displaySentences.length) {
         throw new Error("Oversættelsen manglede en eller flere sætninger.");
       }
-      setTranslations((current) => ({ ...current, [language]: result }));
+      setTranslations((current) => ({ ...current, [cacheKey]: result }));
       writeTranslationCache(cacheKey, result);
     } catch (error) {
       if (!controller.signal.aborted) {
@@ -360,7 +367,16 @@ export function TranscriptView({
                     type="button"
                     role="menuitem"
                     onClick={() => {
-                      onDownload();
+                      const currentTranslations = selectedTranslations ??
+                        readTranslationCache(selectedTranslationKey, displaySentences.length);
+                      const hasCompleteTranslation = currentTranslations?.length === displaySentences.length &&
+                        currentTranslations.every((text) => text.trim());
+                      onDownload(hasCompleteTranslation ? {
+                        language: translationLanguage,
+                        text: currentTranslations.join(
+                          translationLanguage === "zh" || translationLanguage === "ja" ? "" : " ",
+                        ),
+                      } : undefined);
                       setIsActionsMenuOpen(false);
                     }}
                     className="flex w-full items-center justify-between gap-5 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-[#29231b] transition hover:bg-[#29231b] hover:text-[#f8f2e6] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/20"
